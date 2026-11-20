@@ -53,4 +53,8 @@
   .add-button {
     @apply inline-flex items-center gap-1.5 rounded-lg border border-dashed border-line px-2.5 py-1.5 text-xs font-medium text-muted transition hover:border-accent/60 hover:text-ink focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:outline-none;
   }
+
+  .predefined-select {
+    @apply max-w-[62%] min-w-0 rounded-lg border border-line bg-panel-raised px-2 py-1 text-[10px] font-medium text-muted transition outline-none hover:border-accent/60 hover:text-ink focus:border-accent focus:ring-2 focus:ring-accent/20;
+  }
 }
