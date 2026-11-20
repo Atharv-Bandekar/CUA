@@ -1,0 +1,68 @@
+# Cursor rules — business analyst review worksheet
+
+Read `ARCHITECTURE.md` and `CLAUDE.md` first. These rules are mandatory.
+
+## Architecture (four layers, dependencies point down)
+
+- `src/domain/` — pure TypeScript types, rating mappings, formatters.
+  **ZERO React, DOM, or browser API imports.** No `react`, `window`, `document`,
+  `navigator`, `localStorage`, timers, `fetch` or JSX. Pure functions only.
+- `src/state/` — framework-agnostic reactive store. Four slices:
+  `taskCompletion`, `worldFactCorrectness`, `accountFactuality`,
+  `responseExperience`. Persists to `localStorage` under `ba.review.v1`.
+  `clearAll()` resets everything and opens a 5-second undo window
+  (`UNDO_WINDOW_MS`, `undoClear()`). No React in this layer.
+- `src/adapters/` — browser boundaries such as clipboard
+  (`navigator.clipboard.writeText`); never throw at callers, return a failure
+  result.
+- `src/components/` — React + Tailwind + Lucide only. No business rules, no
+  formatting logic, no direct storage or clipboard access.
+
+Never import upward (domain must not import state/adapters/components).
+
+## Mandatory shared components
+
+- Every repeatable input (Conditions, Sources, Expected bullets, Actual bullets,
+  completed tasks) uses `src/components/RemovableFieldRow.tsx`, which renders a
+  right-aligned close (`×`) button with an `aria-label`. Do not write a bespoke
+  delete button.
+- `World Fact Correctness` and `Account Factuality` are both rendered by the
+  single parameterised `src/components/JustificationBuilderView.tsx`. Never
+  duplicate that JSX.
+
+## TypeScript
+
+- Strict mode is non-negotiable; `noImplicitAny` stays on.
+- **Zero `any`.** No `as any`, no `any[]`, no `Record<string, any>`. Use
+  `unknown` + type guards at boundaries.
+- `Rating` is `1 | 2 | 3 | 4 | 5`; do not widen it to `number`.
+- No `@ts-ignore` / `@ts-expect-error` suppressions. `npm run typecheck` must
+  pass clean.
+
+## TDD
+
+1. Write/extend a Vitest test in `tests/domain/` BEFORE implementing any
+   `src/domain/` function; watch it fail for the right reason.
+2. Implement the minimum in `src/domain/`, then refactor.
+3. Add `tests/state/` coverage for store, persistence, undo expiry and undo
+   cancellation.
+4. Inject clocks/storage in tests; never rely on real time or real
+   `localStorage`.
+5. Never skip, delete or weaken a test to make the suite pass.
+
+## Git discipline
+
+- **Never commit directly to `main`.**
+- Work on `feat/<name>` branches, one per sprint, created from up-to-date `main`.
+- Before committing: `npm test` and `npm run build` must pass.
+- Conventional Commits only, e.g. `feat(state): add undo for clearAll`.
+- Generate `PR_SUMMARY.md` before opening a PR; reset it each sprint so it
+  describes only the current branch.
+
+## UI conventions
+
+- Dark only: background `#0F1115`, cards `#181B20`, raised `#1F232A`, borders
+  `#2A2F38`, text `#E6E8EB`, muted `#9AA3AF`, accent `#6C8CFF`.
+- Optimise for a 400 px wide split-screen window: single column, `min-w-0`,
+  compact spacing, `break-all` for URLs, accessible focus states.
+- Icons come from `lucide-react`; do not add other icon libraries.
