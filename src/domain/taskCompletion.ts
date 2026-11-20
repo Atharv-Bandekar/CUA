@@ -49,6 +49,13 @@ export interface InfrastructureIssue {
   action: string;
   /** Text after "but". */
   failure: string;
+  /**
+   * How many characters of the typed justification come before this issue's
+   * line. New issues are recorded after the text that already exists, so the
+   * field reads as one chronological flow instead of every new issue jumping
+   * above what was written.
+   */
+  at: number;
 }
 
 export interface TaskCompletionState {
@@ -101,71 +108,164 @@ export function infrastructureIssueLines(issues: readonly InfrastructureIssue[])
   return issues.map(formatInfrastructureIssue).filter((line) => line !== '');
 }
 
+/** Appends text to the field, keeping generated lines and typed text on separate rows. */
+function appendFieldText(out: string, text: string): string {
+  if (text === '') {
+    return out;
+  }
+
+  if (out !== '' && !out.endsWith('\n') && !text.startsWith('\n')) {
+    return `${out}\n${text}`;
+  }
+
+  return `${out}${text}`;
+}
+
 /**
- * Value of the justification field. With a combined justification the issue
- * lines are shown inside the field above the typed text, so the reviewer sees
- * exactly the order the output prints; with a separate list the field holds the
- * typed text only.
+ * Value of the justification field. With a combined justification each issue
+ * line is spliced into the typed text at its own position, so the field reads
+ * as the sequence the reviewer built — an issue added after some text lands
+ * below that text. With a separate list the field holds the typed text only.
  */
 export function justificationFieldText(
   issues: readonly InfrastructureIssue[],
   typed: string,
   separateList: boolean,
 ): string {
-  const lines = separateList ? [] : infrastructureIssueLines(issues);
-
-  if (lines.length === 0) {
+  if (separateList) {
     return typed;
   }
 
-  // The typed text always starts on its own line, so pressing Enter at the end
-  // of the generated issue lines starts a new line instead of being swallowed.
-  return `${lines.join('\n')}\n${typed}`;
+  let out = '';
+  let cursor = 0;
+  let placed = false;
+
+  for (const issue of issues) {
+    const line = formatInfrastructureIssue(issue);
+
+    if (line === '') {
+      continue;
+    }
+
+    const at = Math.min(Math.max(issue.at, cursor), typed.length);
+    out = appendFieldText(out, typed.slice(cursor, at));
+    out = appendFieldText(out, line);
+    cursor = at;
+    placed = true;
+  }
+
+  const rest = typed.slice(cursor);
+  out = appendFieldText(out, rest);
+
+  // An issue line that ends the field keeps a trailing newline, so typing
+  // straight after it starts on a fresh line instead of gluing onto it.
+  return placed && rest === '' ? `${out}\n` : out;
+}
+
+export interface JustificationDraft {
+  /** Text the reviewer typed, with the generated issue lines removed. */
+  typed: string;
+  /** The issues, with their positions re-read from the field. */
+  issues: InfrastructureIssue[];
+}
+
+/** The newline between a generated line and its neighbours is ours, not typed. */
+function dropLeadingNewline(text: string): string {
+  return text.startsWith('\n') ? text.slice(1) : text;
+}
+
+/** A typed segment loses the generated newline on either side of an issue line. */
+function trimSeparators(text: string): string {
+  const trimmed = dropLeadingNewline(text);
+  return trimmed.endsWith('\n') ? trimmed.slice(0, -1) : trimmed;
+}
+
+/** Index of the line starting with `line` at or after `from`, or -1. */
+function findLine(value: string, line: string, from: number): number {
+  let index = from;
+
+  while (index <= value.length) {
+    const end = value.indexOf('\n', index);
+    const lineEnd = end === -1 ? value.length : end;
+
+    if (value.slice(index, lineEnd) === line) {
+      return index;
+    }
+
+    if (end === -1) {
+      return -1;
+    }
+
+    index = end + 1;
+  }
+
+  return -1;
 }
 
 /**
- * Inverse of `justificationFieldText`: drops the generated issue lines the field
- * starts with, leaving the text the reviewer typed. Lines are compared one by
- * one so an edit further down the field never loses typed text.
+ * Inverse of `justificationFieldText`: finds each generated issue line in the
+ * field, removes it, and records where it sat so the remaining typed text and
+ * the issue order stay exactly as the reviewer left them.
  */
-export function typedJustification(
+export function justificationDraft(
   fieldValue: string,
   issues: readonly InfrastructureIssue[],
   separateList: boolean,
-): string {
-  const lines = separateList ? [] : infrastructureIssueLines(issues);
-
-  if (lines.length === 0) {
-    return fieldValue;
+): JustificationDraft {
+  if (separateList) {
+    return { typed: fieldValue, issues: [...issues] };
   }
 
-  const parts = fieldValue.split('\n');
-  let generated = 0;
+  const next: InfrastructureIssue[] = [];
+  let typed = '';
+  let cursor = 0;
 
-  while (generated < lines.length && parts[generated] === lines[generated]) {
-    generated += 1;
+  for (const issue of issues) {
+    const line = formatInfrastructureIssue(issue);
+
+    if (line === '') {
+      next.push({ ...issue });
+      continue;
+    }
+
+    const found = findLine(fieldValue, line, cursor);
+
+    if (found === -1) {
+      // The reviewer removed the generated line itself; the row keeps its place
+      // and the line comes back on the next render.
+      next.push({ ...issue });
+      continue;
+    }
+
+    typed += trimSeparators(fieldValue.slice(cursor, found));
+    next.push({ ...issue, at: typed.length });
+    cursor = found + line.length;
   }
 
-  return parts.slice(generated).join('\n');
+  typed += dropLeadingNewline(fieldValue.slice(cursor));
+
+  return { typed, issues: next };
 }
 
 /**
  * Compiles the task completion block. Conditions are numbered from their array
  * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
  * and condition statuses print as Yes / No, while the final rating prints its
- * scale label. Infrastructure issues either open the justification text or
- * follow it as their own bulleted block, depending on the separate-list answer.
- * A combined justification keeps the issues first, so the order matches the
- * order the issues were recorded in before the justification was written.
+ * scale label. Infrastructure issues either sit inside the justification text
+ * in the order the reviewer built it, or follow it as their own bulleted block,
+ * depending on the separate-list answer. The folded text is the field value
+ * itself, so the output matches what the reviewer sees.
  */
 export function formatTaskCompletion(state: TaskCompletionState): string {
   const issueLines = infrastructureIssueLines(state.infrastructureIssues);
   const separateIssues = state.separateInfrastructureList && issueLines.length > 0;
+  const folded = justificationFieldText(
+    state.infrastructureIssues,
+    state.justification,
+    state.separateInfrastructureList,
+  );
 
-  const justificationText = (separateIssues ? [state.justification.trim()] : [
-    ...issueLines,
-    state.justification.trim(),
-  ])
+  const justificationText = (separateIssues ? [state.justification.trim()] : [folded.trim()])
     .filter((part) => part !== '')
     .join('\n');
 

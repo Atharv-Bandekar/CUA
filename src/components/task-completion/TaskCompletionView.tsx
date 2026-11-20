@@ -2,9 +2,9 @@ import { Sparkles } from 'lucide-react';
 import { pluralize } from '../../domain/format';
 import {
   infrastructureIssueLines,
+  justificationDraft,
   justificationFieldText,
   taskCompletionRatingLabel,
-  typedJustification,
   type TaskCompletionCondition,
 } from '../../domain/taskCompletion';
 import { evaluationStore, useEvaluationStore } from '../../state/useEvaluationStore';
@@ -18,8 +18,9 @@ export function TaskCompletionView() {
   const { taskCompletion } = useEvaluationStore();
   const conditions = taskCompletion.conditions;
   // With a combined justification the issue lines live in the justification
-  // field itself, above the typed text, so the field shows exactly the order
-  // the output prints and never falls out of sync with the issue rows.
+  // field itself, spliced in where the reviewer left them, so the field shows
+  // exactly the order the output prints and never falls out of sync with the
+  // issue rows.
   const justificationValue = justificationFieldText(
     taskCompletion.infrastructureIssues,
     taskCompletion.justification,
@@ -150,6 +151,7 @@ export function TaskCompletionView() {
 
       <InfrastructureIssuesSection
         issues={taskCompletion.infrastructureIssues}
+        typedJustification={taskCompletion.justification}
         separateList={taskCompletion.separateInfrastructureList}
       />
 
@@ -186,20 +188,22 @@ export function TaskCompletionView() {
             rows={foldedIssues ? 5 : 3}
             placeholder="Why did the response earn this rating?"
             value={justificationValue}
-            onChange={(event) =>
+            onChange={(event) => {
+              const draft = justificationDraft(
+                event.target.value,
+                taskCompletion.infrastructureIssues,
+                taskCompletion.separateInfrastructureList,
+              );
               evaluationStore.updateTaskCompletion({
-                justification: typedJustification(
-                  event.target.value,
-                  taskCompletion.infrastructureIssues,
-                  taskCompletion.separateInfrastructureList,
-                ),
-              })
-            }
+                justification: draft.typed,
+                infrastructureIssues: draft.issues,
+              });
+            }}
           />
           {foldedIssues && (
             <p className="text-[10px] leading-relaxed text-muted/80">
-              The issue lines at the top of this field are generated from the rows above and print
-              first.
+              The issue lines in this field are generated from the rows above and stay in the order
+              they were added, so a new issue lands after the text already written.
             </p>
           )}
         </div>

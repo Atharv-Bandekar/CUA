@@ -155,11 +155,16 @@ describe('Infrastructure issues', () => {
     expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
   });
 
-  it('writes the folded issues into the justification field above the typed text', async () => {
+  it('lands a new issue below the justification text already written', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
+    const justification = () => screen.getByLabelText('Justification') as HTMLTextAreaElement;
+    const addIssue = screen.getByRole('button', { name: '+ Add Issue' });
+    const first = 'Agent tries to open the CRM ticket but the tool returned a 403';
+    const second = 'Agent tries to read the attached spreadsheet but the file did not load';
+
+    await user.click(addIssue);
     await user.type(
       screen.getByLabelText('Infrastructure issue 1 attempted action'),
       'open the CRM ticket',
@@ -169,41 +174,32 @@ describe('Infrastructure issues', () => {
       'the tool returned a 403',
     );
 
-    const justification = screen.getByLabelText('Justification') as HTMLTextAreaElement;
-    const issueLine = 'Agent tries to open the CRM ticket but the tool returned a 403';
+    expect(justification().value).toBe(`${first}\n`);
 
-    expect(justification.value).toBe(`${issueLine}\n`);
+    // The field already ends on a fresh line, so the typed text lands below the issue.
+    await user.type(justification(), 'Tickets stayed open.');
 
-    // The field already ends on a fresh line, so the typed text lands below the issues.
-    await user.type(justification, 'Tickets stayed open.');
+    expect(justification().value).toBe(`${first}\nTickets stayed open.`);
+    expect(evaluationStore.getState().taskCompletion.justification).toBe('Tickets stayed open.');
 
-    expect(justification.value).toBe(`${issueLine}\nTickets stayed open.`);
+    // A second issue joins after the text that is already there, not above it.
+    await user.click(addIssue);
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 2 attempted action'),
+      'read the attached spreadsheet',
+    );
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 2 failure'),
+      'the file did not load',
+    );
+
+    expect(justification().value).toBe(`${first}\nTickets stayed open.\n${second}\n`);
     expect(evaluationStore.getState().taskCompletion.justification).toBe('Tickets stayed open.');
 
     const output = screen.getByTestId('task-completion-output').textContent ?? '';
-    const issueAt = output.indexOf('Agent tries to open the CRM ticket');
-    const textAt = output.indexOf('Tickets stayed open.');
-
-    expect(issueAt).toBeGreaterThan(-1);
-    expect(textAt).toBeGreaterThan(issueAt);
-
-    await user.type(
-      screen.getByLabelText('Infrastructure issue 1 attempted action'),
-      ' again',
-    );
-
-    expect(justification.value).toBe(
-      `Agent tries to open the CRM ticket again but the tool returned a 403\nTickets stayed open.`,
-    );
-
-    await user.click(
-      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
-        'button',
-        { name: 'Yes' },
-      ),
-    );
-
-    expect(justification.value).toBe('Tickets stayed open.');
+    expect(output.indexOf(first)).toBeGreaterThan(-1);
+    expect(output.indexOf('Tickets stayed open.')).toBeGreaterThan(output.indexOf(first));
+    expect(output.indexOf(second)).toBeGreaterThan(output.indexOf('Tickets stayed open.'));
   });
 
   it('persists the issues and the separate-list answer', async () => {
@@ -229,13 +225,13 @@ describe('Infrastructure issues', () => {
     const stored = JSON.parse(localStorage.getItem('ba.evaluation.v1') ?? '{}') as {
       taskCompletion?: {
         separateInfrastructureList?: boolean;
-        infrastructureIssues?: { action: string; failure: string }[];
+        infrastructureIssues?: { action: string; failure: string; at: number }[];
       };
     };
 
     expect(stored.taskCompletion?.separateInfrastructureList).toBe(true);
     expect(stored.taskCompletion?.infrastructureIssues).toEqual([
-      { action: 'open the CRM ticket', failure: 'the tool returned a 403' },
+      { action: 'open the CRM ticket', failure: 'the tool returned a 403', at: 0 },
     ]);
   });
 

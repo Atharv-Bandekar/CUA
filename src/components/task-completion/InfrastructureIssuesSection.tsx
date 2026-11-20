@@ -4,6 +4,8 @@ import { RemovableFieldRow } from '../RemovableFieldRow';
 
 export interface InfrastructureIssuesSectionProps {
   issues: InfrastructureIssue[];
+  /** Text the reviewer typed into the justification field. */
+  typedJustification: string;
   /** true → the live output prints the issues as their own bulleted block. */
   separateList: boolean;
 }
@@ -18,10 +20,18 @@ const SEPARATE_LIST_CHOICES: readonly { label: string; value: boolean }[] = [
  * recorded as `Agent tries to [action] but [failure]`; the separate-list answer
  * decides whether those lines join the justification or follow it as a list.
  */
-export function InfrastructureIssuesSection({ issues, separateList }: InfrastructureIssuesSectionProps) {
+export function InfrastructureIssuesSection({
+  issues,
+  typedJustification,
+  separateList,
+}: InfrastructureIssuesSectionProps) {
   function addIssue(): void {
     evaluationStore.updateTaskCompletion({
-      infrastructureIssues: [...issues, { action: '', failure: '' }],
+      // The new line joins the justification after the text that already exists.
+      infrastructureIssues: [
+        ...issues,
+        { action: '', failure: '', at: typedJustification.length },
+      ],
     });
   }
 
