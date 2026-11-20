@@ -108,14 +108,18 @@ export function infrastructureIssueLines(issues: readonly InfrastructureIssue[])
   return issues.map(formatInfrastructureIssue).filter((line) => line !== '');
 }
 
-/** Appends text to the field, keeping generated lines and typed text on separate rows. */
+/**
+ * Appends text to the field, separating it from what is already there with a
+ * single space. Generated lines and typed text therefore read as one flow,
+ * and a line is never pushed onto its own row above the reviewer's text.
+ */
 function appendFieldText(out: string, text: string): string {
   if (text === '') {
     return out;
   }
 
-  if (out !== '' && !out.endsWith('\n') && !text.startsWith('\n')) {
-    return `${out}\n${text}`;
+  if (out !== '' && !/\s$/.test(out) && !/^\s/.test(text)) {
+    return `${out} ${text}`;
   }
 
   return `${out}${text}`;
@@ -157,9 +161,9 @@ export function justificationFieldText(
   const rest = typed.slice(cursor);
   out = appendFieldText(out, rest);
 
-  // An issue line that ends the field keeps a trailing newline, so typing
-  // straight after it starts on a fresh line instead of gluing onto it.
-  return placed && rest === '' ? `${out}\n` : out;
+  // An issue line that ends the field keeps a trailing space, so the next
+  // character the reviewer types starts a new word instead of gluing onto it.
+  return placed && rest === '' ? `${out} ` : out;
 }
 
 export interface JustificationDraft {
@@ -169,37 +173,28 @@ export interface JustificationDraft {
   issues: InfrastructureIssue[];
 }
 
-/** The newline between a generated line and its neighbours is ours, not typed. */
-function dropLeadingNewline(text: string): string {
-  return text.startsWith('\n') ? text.slice(1) : text;
+/** The space between a generated line and its neighbours is ours, not typed. */
+function dropLeadingSpace(text: string): string {
+  return text.startsWith(' ') ? text.slice(1) : text;
 }
 
-/** A typed segment loses the generated newline on either side of an issue line. */
+/** A typed segment loses the generated space on either side of an issue line. */
 function trimSeparators(text: string): string {
-  const trimmed = dropLeadingNewline(text);
-  return trimmed.endsWith('\n') ? trimmed.slice(0, -1) : trimmed;
+  const trimmed = dropLeadingSpace(text);
+  return trimmed.endsWith(' ') ? trimmed.slice(0, -1) : trimmed;
 }
 
-/** Index of the line starting with `line` at or after `from`, or -1. */
-function findLine(value: string, line: string, from: number): number {
-  let index = from;
-
-  while (index <= value.length) {
-    const end = value.indexOf('\n', index);
-    const lineEnd = end === -1 ? value.length : end;
-
-    if (value.slice(index, lineEnd) === line) {
-      return index;
-    }
-
-    if (end === -1) {
-      return -1;
-    }
-
-    index = end + 1;
+/** Keeps typed words apart once a removed issue line no longer separates them. */
+function joinTyped(typed: string, segment: string): string {
+  if (segment === '') {
+    return typed;
   }
 
-  return -1;
+  if (typed !== '' && !/\s$/.test(typed) && !/^\s/.test(segment)) {
+    return `${typed} ${segment}`;
+  }
+
+  return `${typed}${segment}`;
 }
 
 /**
@@ -228,7 +223,7 @@ export function justificationDraft(
       continue;
     }
 
-    const found = findLine(fieldValue, line, cursor);
+    const found = fieldValue.indexOf(line, cursor);
 
     if (found === -1) {
       // The reviewer removed the generated line itself; the row keeps its place
@@ -237,12 +232,12 @@ export function justificationDraft(
       continue;
     }
 
-    typed += trimSeparators(fieldValue.slice(cursor, found));
+    typed = joinTyped(typed, trimSeparators(fieldValue.slice(cursor, found)));
     next.push({ ...issue, at: typed.length });
     cursor = found + line.length;
   }
 
-  typed += dropLeadingNewline(fieldValue.slice(cursor));
+  typed = joinTyped(typed, dropLeadingSpace(fieldValue.slice(cursor)));
 
   return { typed, issues: next };
 }

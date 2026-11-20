@@ -174,12 +174,12 @@ describe('Infrastructure issues', () => {
       'the tool returned a 403',
     );
 
-    expect(justification().value).toBe(`${first}\n`);
+    expect(justification().value).toBe(`${first} `);
 
-    // The field already ends on a fresh line, so the typed text lands below the issue.
+    // The issue line ends on a space, so the typed text continues after it.
     await user.type(justification(), 'Tickets stayed open.');
 
-    expect(justification().value).toBe(`${first}\nTickets stayed open.`);
+    expect(justification().value).toBe(`${first} Tickets stayed open.`);
     expect(evaluationStore.getState().taskCompletion.justification).toBe('Tickets stayed open.');
 
     // A second issue joins after the text that is already there, not above it.
@@ -193,7 +193,8 @@ describe('Infrastructure issues', () => {
       'the file did not load',
     );
 
-    expect(justification().value).toBe(`${first}\nTickets stayed open.\n${second}\n`);
+    // The new issue is written after the last character already in the field.
+    expect(justification().value).toBe(`${first} Tickets stayed open. ${second} `);
     expect(evaluationStore.getState().taskCompletion.justification).toBe('Tickets stayed open.');
 
     const output = screen.getByTestId('task-completion-output').textContent ?? '';

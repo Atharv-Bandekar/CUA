@@ -2,10 +2,13 @@
 
 ## What changed
 - **The justification field reads as one flow.** With the separate-list answer set
-  to `No`, each `Agent tries to … but …` line is spliced into the justification
-  field at the position where it was added. An issue added after some text lands
-  *below* that text instead of jumping to the top, and a later edit to a row's
-  action or failure updates its line in place.
+  to `No`, each `Agent tries to … but …` line is written into the justification
+  field after the last character already there, separated by a single space. An
+  issue added after some text lands *after* that text, never above it, and a later
+  edit to a row's action or failure updates its line in place.
+- **No line breaks are invented.** The generated line joins the text as a normal
+  sentence (`… tickets. Agent tries to open the CRM ticket but the tool returned a
+  403 …`), so the field reads exactly the order the reviewer built.
 - **Each issue remembers its position.** `InfrastructureIssue` gained `at`, the
   number of typed characters that come before its line. Add Issue records the end
   of the text that already exists, so the sequence the reviewer builds is the
@@ -28,12 +31,13 @@
   the list it appends to.
 
 ## Tests
-- `npm test` — 113 passing (10 files)
-- `npm run build` — passing (266.56 kB JS / 80.37 kB gzip, 28.21 kB CSS)
+- `npm test` — 114 passing (10 files)
+- `npm run build` — passing (266.51 kB JS / 80.31 kB gzip, 28.21 kB CSS)
 
 New coverage:
 - `tests/domain/taskCompletion.test.ts` — an issue recorded at the end of the
-  typed text renders below it, issues and text interleave in the added order, and
+  typed text renders after it behind a single space, issues and text interleave in
+  the added order, text typed after a generated line stays readable, and
   `justificationDraft` round-trips that field back to the typed text plus the same
   positions.
 - `tests/integration/taskCompletion.test.tsx` — fill an issue, type the

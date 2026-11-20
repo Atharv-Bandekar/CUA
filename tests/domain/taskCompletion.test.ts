@@ -188,9 +188,9 @@ describe('infrastructure issues', () => {
       output.endsWith(
         [
           'Final Rating: Fully Complete',
-          'Justification: Agent tries to open the CRM ticket but the tool returned a 403',
-          'Agent tries to read the attached spreadsheet but the file did not load',
-          'All tickets closed and verified.',
+          'Justification: Agent tries to open the CRM ticket but the tool returned a 403 ' +
+            'Agent tries to read the attached spreadsheet but the file did not load ' +
+            'All tickets closed and verified.',
         ].join('\n'),
       ),
     ).toBe(true);
@@ -224,18 +224,13 @@ describe('infrastructure issues', () => {
 
   it('shows the folded issues at the top of the justification field value', () => {
     expect(justificationFieldText(infrastructureIssues, '', false)).toBe(
-      [
-        'Agent tries to open the CRM ticket but the tool returned a 403',
-        'Agent tries to read the attached spreadsheet but the file did not load',
-        '',
-      ].join('\n'),
+      'Agent tries to open the CRM ticket but the tool returned a 403 ' +
+        'Agent tries to read the attached spreadsheet but the file did not load ',
     );
     expect(justificationFieldText(infrastructureIssues, 'All tickets closed.', false)).toBe(
-      [
-        'Agent tries to open the CRM ticket but the tool returned a 403',
-        'Agent tries to read the attached spreadsheet but the file did not load',
+      'Agent tries to open the CRM ticket but the tool returned a 403 ' +
+        'Agent tries to read the attached spreadsheet but the file did not load ' +
         'All tickets closed.',
-      ].join('\n'),
     );
     expect(justificationFieldText(infrastructureIssues, 'All tickets closed.', true)).toBe(
       'All tickets closed.',
@@ -248,7 +243,7 @@ describe('infrastructure issues', () => {
     const issue = { ...infrastructureIssues[0], at: typed.length };
 
     expect(justificationFieldText([issue], typed, false)).toBe(
-      `${typed}\nAgent tries to open the CRM ticket but the tool returned a 403\n`,
+      `${typed} Agent tries to open the CRM ticket but the tool returned a 403 `,
     );
   });
 
@@ -260,13 +255,20 @@ describe('infrastructure issues', () => {
     ];
 
     expect(justificationFieldText(issues, typed, false)).toBe(
-      [
-        'Agent tries to open the CRM ticket but the tool returned a 403',
-        'Tickets stayed open.',
-        'Agent tries to read the attached spreadsheet but the file did not load',
-        '',
-      ].join('\n'),
+      'Agent tries to open the CRM ticket but the tool returned a 403 ' +
+        'Tickets stayed open. ' +
+        'Agent tries to read the attached spreadsheet but the file did not load ',
     );
+  });
+
+  it('keeps text typed after a generated line apart from the text before it', () => {
+    const issue = { ...infrastructureIssues[0], at: 'First.'.length };
+    const field = justificationFieldText([issue], 'First. Second.', false);
+    const draft = justificationDraft(field, [issue], false);
+
+    expect(field).toBe('First. Agent tries to open the CRM ticket but the tool returned a 403 Second.');
+    expect(draft.typed).toBe('First. Second.');
+    expect(draft.issues).toEqual([issue]);
   });
 
   it('recovers the typed text and the issue positions from the field value', () => {
