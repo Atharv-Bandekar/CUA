@@ -4,11 +4,10 @@ import {
   TASK_COMPLETION_RATINGS,
   TASK_COMPLETION_STATUSES,
   TASK_COMPLETION_STATUS_RATINGS,
+  appendInfrastructureTemplate,
   formatInfrastructureIssue,
   formatTaskCompletion,
   infrastructureIssueLines,
-  justificationDraft,
-  justificationFieldText,
   taskCompletionRatingLabel,
   taskCompletionStatusLabel,
 } from '../../src/domain/taskCompletion';
@@ -28,8 +27,8 @@ const state: TaskCompletionState = {
 };
 
 const infrastructureIssues: InfrastructureIssue[] = [
-  { action: 'open the CRM ticket', failure: 'the tool returned a 403', at: 0 },
-  { action: 'read the attached spreadsheet', failure: 'the file did not load', at: 0 },
+  { action: 'open the CRM ticket', failure: 'the tool returned a 403' },
+  { action: 'read the attached spreadsheet', failure: 'the file did not load' },
 ];
 
 describe('task completion rating options', () => {
@@ -148,16 +147,16 @@ describe('infrastructure issues', () => {
   });
 
   it('collapses blank slots instead of printing doubled spaces', () => {
-    expect(formatInfrastructureIssue({ action: 'open the CRM ticket', failure: '  ', at: 0 })).toBe(
+    expect(formatInfrastructureIssue({ action: 'open the CRM ticket', failure: '  ' })).toBe(
       'Agent tries to open the CRM ticket but',
     );
-    expect(formatInfrastructureIssue({ action: '', failure: 'the file did not load', at: 0 })).toBe(
+    expect(formatInfrastructureIssue({ action: '', failure: 'the file did not load' })).toBe(
       'Agent tries to but the file did not load',
     );
   });
 
   it('returns an empty string for a row that has not been filled in', () => {
-    expect(formatInfrastructureIssue({ action: '   ', failure: '', at: 0 })).toBe('');
+    expect(formatInfrastructureIssue({ action: '   ', failure: '' })).toBe('');
   });
 
   it('adds a separate bulleted block below the justification when the list is separate', () => {
@@ -181,142 +180,41 @@ describe('infrastructure issues', () => {
     ).toBe(true);
   });
 
-  it('folds the issues above the justification text when the list is not separate', () => {
-    const output = formatTaskCompletion({ ...state, infrastructureIssues });
-
-    expect(
-      output.endsWith(
-        [
-          'Final Rating: Fully Complete',
-          'Justification: Agent tries to open the CRM ticket but the tool returned a 403 ' +
-            'Agent tries to read the attached spreadsheet but the file did not load ' +
-            'All tickets closed and verified.',
-        ].join('\n'),
-      ),
-    ).toBe(true);
-    expect(output).not.toContain('Infrastructure/tool call issues:');
-  });
-
-  it('keeps the issues first when the justification is typed after them', () => {
-    const output = formatTaskCompletion({
-      ...state,
-      justification: '  I rated this Fully Complete because every ticket was closed.  ',
-      infrastructureIssues,
-    });
-
-    const issueAt = output.indexOf('Agent tries to open the CRM ticket');
-    const textAt = output.indexOf('I rated this Fully Complete');
-
-    expect(issueAt).toBeGreaterThan(-1);
-    expect(textAt).toBeGreaterThan(issueAt);
-    expect(output).toContain(
-      'Justification: Agent tries to open the CRM ticket but the tool returned a 403',
+  it('writes the template after the justification text already written', () => {
+    expect(appendInfrastructureTemplate('Tickets stayed open.')).toBe(
+      'Tickets stayed open. Agent tries to but',
+    );
+    expect(appendInfrastructureTemplate('Tickets stayed open.  ')).toBe(
+      'Tickets stayed open. Agent tries to but',
     );
   });
 
-  it('returns the printable issue lines for the justification field', () => {
+  it('starts a blank justification with the template', () => {
+    expect(appendInfrastructureTemplate('')).toBe('Agent tries to but');
+    expect(appendInfrastructureTemplate('  \n ')).toBe('Agent tries to but');
+  });
+
+  it('returns the printable issue lines for the separate list', () => {
     expect(infrastructureIssueLines(infrastructureIssues)).toEqual([
       'Agent tries to open the CRM ticket but the tool returned a 403',
       'Agent tries to read the attached spreadsheet but the file did not load',
     ]);
-    expect(infrastructureIssueLines([{ action: '', failure: ' ', at: 0 }])).toEqual([]);
+    expect(infrastructureIssueLines([{ action: '', failure: ' ' }])).toEqual([]);
   });
 
-  it('shows the folded issues at the top of the justification field value', () => {
-    expect(justificationFieldText(infrastructureIssues, '', false)).toBe(
-      'Agent tries to open the CRM ticket but the tool returned a 403 ' +
-        'Agent tries to read the attached spreadsheet but the file did not load ',
-    );
-    expect(justificationFieldText(infrastructureIssues, 'All tickets closed.', false)).toBe(
-      'Agent tries to open the CRM ticket but the tool returned a 403 ' +
-        'Agent tries to read the attached spreadsheet but the file did not load ' +
-        'All tickets closed.',
-    );
-    expect(justificationFieldText(infrastructureIssues, 'All tickets closed.', true)).toBe(
-      'All tickets closed.',
-    );
-    expect(justificationFieldText([], 'All tickets closed.', false)).toBe('All tickets closed.');
-  });
+  it('prints only the justification text when the list is not separate', () => {
+    const output = formatTaskCompletion({ ...state, infrastructureIssues });
 
-  it('keeps a new issue below the justification text already written', () => {
-    const typed = 'Tickets stayed open.';
-    const issue = { ...infrastructureIssues[0], at: typed.length };
-
-    expect(justificationFieldText([issue], typed, false)).toBe(
-      `${typed} Agent tries to open the CRM ticket but the tool returned a 403 `,
-    );
-  });
-
-  it('splices the issues around the typed text in the order they were added', () => {
-    const typed = 'Tickets stayed open.';
-    const issues = [
-      { ...infrastructureIssues[0], at: 0 },
-      { ...infrastructureIssues[1], at: typed.length },
-    ];
-
-    expect(justificationFieldText(issues, typed, false)).toBe(
-      'Agent tries to open the CRM ticket but the tool returned a 403 ' +
-        'Tickets stayed open. ' +
-        'Agent tries to read the attached spreadsheet but the file did not load ',
-    );
-  });
-
-  it('keeps text typed after a generated line apart from the text before it', () => {
-    const issue = { ...infrastructureIssues[0], at: 'First.'.length };
-    const field = justificationFieldText([issue], 'First. Second.', false);
-    const draft = justificationDraft(field, [issue], false);
-
-    expect(field).toBe('First. Agent tries to open the CRM ticket but the tool returned a 403 Second.');
-    expect(draft.typed).toBe('First. Second.');
-    expect(draft.issues).toEqual([issue]);
-  });
-
-  it('recovers the typed text and the issue positions from the field value', () => {
-    const typed = 'Tickets stayed open.';
-    const issues = [
-      { ...infrastructureIssues[0], at: 0 },
-      { ...infrastructureIssues[1], at: typed.length },
-    ];
-    const field = justificationFieldText(issues, typed, false);
-    const draft = justificationDraft(field, issues, false);
-
-    expect(draft.typed).toBe(typed);
-    expect(draft.issues.map((issue) => issue.at)).toEqual([0, typed.length]);
-    expect(justificationFieldText(draft.issues, draft.typed, false)).toBe(field);
-  });
-
-  it('reads an empty field back as untouched typed text', () => {
-    const folded = justificationFieldText(infrastructureIssues, 'All tickets closed.', false);
-
-    expect(justificationDraft(folded, infrastructureIssues, false).typed).toBe(
-      'All tickets closed.',
-    );
-    expect(
-      justificationDraft(justificationFieldText(infrastructureIssues, '', false), infrastructureIssues, false)
-        .typed,
-    ).toBe('');
-    expect(justificationDraft(folded, infrastructureIssues, true).typed).toBe(folded);
-    expect(justificationDraft('Only my text.', [], false)).toEqual({
-      typed: 'Only my text.',
-      issues: [],
-    });
-  });
-
-  it('prints the issues on the justification line when no justification was typed', () => {
-    const output = formatTaskCompletion({
-      ...state,
-      justification: '',
-      infrastructureIssues: [infrastructureIssues[0]],
-    });
-
-    expect(output).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
+    expect(output).toContain('Justification: All tickets closed and verified.');
+    expect(output).not.toContain('Agent tries to');
+    expect(output).not.toContain('Infrastructure/tool call issues:');
   });
 
   it('leaves the output untouched when every issue row is empty', () => {
     const output = formatTaskCompletion({
       ...state,
       separateInfrastructureList: true,
-      infrastructureIssues: [{ action: '', failure: ' ', at: 0 }],
+      infrastructureIssues: [{ action: '', failure: ' ' }],
     });
 
     expect(output).toBe(formatTaskCompletion(state));

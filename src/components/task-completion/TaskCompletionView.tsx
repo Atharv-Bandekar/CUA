@@ -1,9 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import { pluralize } from '../../domain/format';
 import {
-  infrastructureIssueLines,
-  justificationDraft,
-  justificationFieldText,
   taskCompletionRatingLabel,
   type TaskCompletionCondition,
 } from '../../domain/taskCompletion';
@@ -17,18 +14,10 @@ import { TaskCompletionPreview } from './TaskCompletionPreview';
 export function TaskCompletionView() {
   const { taskCompletion } = useEvaluationStore();
   const conditions = taskCompletion.conditions;
-  // With a combined justification the issue lines live in the justification
-  // field itself, spliced in where the reviewer left them, so the field shows
-  // exactly the order the output prints and never falls out of sync with the
-  // issue rows.
-  const justificationValue = justificationFieldText(
-    taskCompletion.infrastructureIssues,
-    taskCompletion.justification,
-    taskCompletion.separateInfrastructureList,
-  );
-  const foldedIssues =
-    !taskCompletion.separateInfrastructureList &&
-    infrastructureIssueLines(taskCompletion.infrastructureIssues).length > 0;
+  // The justification is plain text. With no separate list it is the only place
+  // the issues are described, so Add Issue writes the template straight into it
+  // and nothing has to be composed or parsed back.
+  const justificationValue = taskCompletion.justification;
 
   function addCondition(): void {
     evaluationStore.updateTaskCompletion({
@@ -151,7 +140,7 @@ export function TaskCompletionView() {
 
       <InfrastructureIssuesSection
         issues={taskCompletion.infrastructureIssues}
-        typedJustification={taskCompletion.justification}
+        justification={taskCompletion.justification}
         separateList={taskCompletion.separateInfrastructureList}
       />
 
@@ -185,27 +174,13 @@ export function TaskCompletionView() {
           <textarea
             id="task-justification"
             className="field-input resize-y"
-            rows={foldedIssues ? 5 : 3}
+            rows={3}
             placeholder="Why did the response earn this rating?"
             value={justificationValue}
-            onChange={(event) => {
-              const draft = justificationDraft(
-                event.target.value,
-                taskCompletion.infrastructureIssues,
-                taskCompletion.separateInfrastructureList,
-              );
-              evaluationStore.updateTaskCompletion({
-                justification: draft.typed,
-                infrastructureIssues: draft.issues,
-              });
-            }}
+            onChange={(event) =>
+              evaluationStore.updateTaskCompletion({ justification: event.target.value })
+            }
           />
-          {foldedIssues && (
-            <p className="text-[10px] leading-relaxed text-muted/80">
-              The issue lines in this field are generated from the rows above and stay in the order
-              they were added, so a new issue lands after the text already written.
-            </p>
-          )}
         </div>
       </section>
 

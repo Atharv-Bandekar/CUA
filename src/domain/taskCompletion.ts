@@ -49,13 +49,6 @@ export interface InfrastructureIssue {
   action: string;
   /** Text after "but". */
   failure: string;
-  /**
-   * How many characters of the typed justification come before this issue's
-   * line. New issues are recorded after the text that already exists, so the
-   * field reads as one chronological flow instead of every new issue jumping
-   * above what was written.
-   */
-  at: number;
 }
 
 export interface TaskCompletionState {
@@ -63,17 +56,25 @@ export interface TaskCompletionState {
   mainGoalStatus: TaskCompletionRating | '';
   conditions: TaskCompletionCondition[];
   finalRating: TaskCompletionRating | '';
+  /**
+   * The justification text. With no separate list this is the only place the
+   * issues are described, and Add Issue writes the template into it.
+   */
   justification: string;
   /**
    * true prints the issues as their own bulleted block below the justification;
-   * false folds them into the justification text itself.
+   * false keeps the justification text alone.
    */
   separateInfrastructureList: boolean;
+  /** Rows of the separate list; only used when the list is separate. */
   infrastructureIssues: InfrastructureIssue[];
 }
 
 /** Heading printed above the standalone issue list. */
 export const INFRASTRUCTURE_ISSUES_HEADING = 'Infrastructure/tool call issues:';
+
+/** Text Add Issue writes into the justification when the list is not separate. */
+export const INFRASTRUCTURE_ISSUE_TEMPLATE = 'Agent tries to but';
 
 export function taskCompletionRatingLabel(rating: TaskCompletionRating | ''): string {
   return ratingOptionLabel(TASK_COMPLETION_RATINGS, rating);
@@ -82,6 +83,16 @@ export function taskCompletionRatingLabel(rating: TaskCompletionRating | ''): st
 /** Yes / No text for the main goal and condition statuses. */
 export function taskCompletionStatusLabel(status: TaskCompletionRating | ''): string {
   return ratingOptionLabel(TASK_COMPLETION_STATUS_RATINGS, status);
+}
+
+/**
+ * Appends the `Agent tries to but` template after the justification text that
+ * already exists, behind a single space, so the reviewer fills the blank slots
+ * in place. A blank field starts with the template itself.
+ */
+export function appendInfrastructureTemplate(justification: string): string {
+  const base = justification.replace(/\s+$/, '');
+  return base === '' ? INFRASTRUCTURE_ISSUE_TEMPLATE : `${base} ${INFRASTRUCTURE_ISSUE_TEMPLATE}`;
 }
 
 /**
@@ -109,160 +120,15 @@ export function infrastructureIssueLines(issues: readonly InfrastructureIssue[])
 }
 
 /**
- * Appends text to the field, separating it from what is already there with a
- * single space. Generated lines and typed text therefore read as one flow,
- * and a line is never pushed onto its own row above the reviewer's text.
- */
-function appendFieldText(out: string, text: string): string {
-  if (text === '') {
-    return out;
-  }
-
-  if (out !== '' && !/\s$/.test(out) && !/^\s/.test(text)) {
-    return `${out} ${text}`;
-  }
-
-  return `${out}${text}`;
-}
-
-/**
- * Value of the justification field. With a combined justification each issue
- * line is spliced into the typed text at its own position, so the field reads
- * as the sequence the reviewer built — an issue added after some text lands
- * below that text. With a separate list the field holds the typed text only.
- */
-export function justificationFieldText(
-  issues: readonly InfrastructureIssue[],
-  typed: string,
-  separateList: boolean,
-): string {
-  if (separateList) {
-    return typed;
-  }
-
-  let out = '';
-  let cursor = 0;
-  let placed = false;
-
-  for (const issue of issues) {
-    const line = formatInfrastructureIssue(issue);
-
-    if (line === '') {
-      continue;
-    }
-
-    const at = Math.min(Math.max(issue.at, cursor), typed.length);
-    out = appendFieldText(out, typed.slice(cursor, at));
-    out = appendFieldText(out, line);
-    cursor = at;
-    placed = true;
-  }
-
-  const rest = typed.slice(cursor);
-  out = appendFieldText(out, rest);
-
-  // An issue line that ends the field keeps a trailing space, so the next
-  // character the reviewer types starts a new word instead of gluing onto it.
-  return placed && rest === '' ? `${out} ` : out;
-}
-
-export interface JustificationDraft {
-  /** Text the reviewer typed, with the generated issue lines removed. */
-  typed: string;
-  /** The issues, with their positions re-read from the field. */
-  issues: InfrastructureIssue[];
-}
-
-/** The space between a generated line and its neighbours is ours, not typed. */
-function dropLeadingSpace(text: string): string {
-  return text.startsWith(' ') ? text.slice(1) : text;
-}
-
-/** A typed segment loses the generated space on either side of an issue line. */
-function trimSeparators(text: string): string {
-  const trimmed = dropLeadingSpace(text);
-  return trimmed.endsWith(' ') ? trimmed.slice(0, -1) : trimmed;
-}
-
-/** Keeps typed words apart once a removed issue line no longer separates them. */
-function joinTyped(typed: string, segment: string): string {
-  if (segment === '') {
-    return typed;
-  }
-
-  if (typed !== '' && !/\s$/.test(typed) && !/^\s/.test(segment)) {
-    return `${typed} ${segment}`;
-  }
-
-  return `${typed}${segment}`;
-}
-
-/**
- * Inverse of `justificationFieldText`: finds each generated issue line in the
- * field, removes it, and records where it sat so the remaining typed text and
- * the issue order stay exactly as the reviewer left them.
- */
-export function justificationDraft(
-  fieldValue: string,
-  issues: readonly InfrastructureIssue[],
-  separateList: boolean,
-): JustificationDraft {
-  if (separateList) {
-    return { typed: fieldValue, issues: [...issues] };
-  }
-
-  const next: InfrastructureIssue[] = [];
-  let typed = '';
-  let cursor = 0;
-
-  for (const issue of issues) {
-    const line = formatInfrastructureIssue(issue);
-
-    if (line === '') {
-      next.push({ ...issue });
-      continue;
-    }
-
-    const found = fieldValue.indexOf(line, cursor);
-
-    if (found === -1) {
-      // The reviewer removed the generated line itself; the row keeps its place
-      // and the line comes back on the next render.
-      next.push({ ...issue });
-      continue;
-    }
-
-    typed = joinTyped(typed, trimSeparators(fieldValue.slice(cursor, found)));
-    next.push({ ...issue, at: typed.length });
-    cursor = found + line.length;
-  }
-
-  typed = joinTyped(typed, dropLeadingSpace(fieldValue.slice(cursor)));
-
-  return { typed, issues: next };
-}
-
-/**
  * Compiles the task completion block. Conditions are numbered from their array
  * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
  * and condition statuses print as Yes / No, while the final rating prints its
- * scale label. Infrastructure issues either sit inside the justification text
- * in the order the reviewer built it, or follow it as their own bulleted block,
- * depending on the separate-list answer. The folded text is the field value
- * itself, so the output matches what the reviewer sees.
+ * scale label. With a separate list the issue rows follow the justification as
+ * their own bulleted block; without one the justification text stands alone.
  */
 export function formatTaskCompletion(state: TaskCompletionState): string {
   const issueLines = infrastructureIssueLines(state.infrastructureIssues);
   const separateIssues = state.separateInfrastructureList && issueLines.length > 0;
-  const folded = justificationFieldText(
-    state.infrastructureIssues,
-    state.justification,
-    state.separateInfrastructureList,
-  );
-
-  const justificationText = (separateIssues ? [state.justification.trim()] : [folded.trim()])
-    .filter((part) => part !== '')
-    .join('\n');
 
   const blocks: string[] = [
     `Main Goal fulfilled? (${state.mainGoal}): ${taskCompletionStatusLabel(state.mainGoalStatus)}`,
@@ -272,7 +138,7 @@ export function formatTaskCompletion(state: TaskCompletionState): string {
     ),
     [
       `Final Rating: ${taskCompletionRatingLabel(state.finalRating)}`,
-      `Justification: ${justificationText}`,
+      `Justification: ${state.justification.trim()}`,
     ].join('\n'),
   ];
 

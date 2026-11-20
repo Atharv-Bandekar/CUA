@@ -176,10 +176,6 @@ function readConditions(value: unknown): TaskCompletionCondition[] {
   });
 }
 
-function readOffset(value: unknown): number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
-}
-
 function readInfrastructureIssues(value: unknown): InfrastructureIssue[] {
   if (!Array.isArray(value)) {
     return [];
@@ -187,13 +183,7 @@ function readInfrastructureIssues(value: unknown): InfrastructureIssue[] {
 
   return value.flatMap((entry): InfrastructureIssue[] =>
     isRecord(entry)
-      ? [
-          {
-            action: readString(entry.action),
-            failure: readString(entry.failure),
-            at: readOffset(entry.at),
-          },
-        ]
+      ? [{ action: readString(entry.action), failure: readString(entry.failure) }]
       : [],
   );
 }

@@ -1,55 +1,48 @@
 # PR Summary — feat/infrastructure-issue-order
 
 ## What changed
-- **The justification field reads as one flow.** With the separate-list answer set
-  to `No`, each `Agent tries to … but …` line is written into the justification
-  field after the last character already there, separated by a single space. An
-  issue added after some text lands *after* that text, never above it, and a later
-  edit to a row's action or failure updates its line in place.
-- **No line breaks are invented.** The generated line joins the text as a normal
-  sentence (`… tickets. Agent tries to open the CRM ticket but the tool returned a
-  403 …`), so the field reads exactly the order the reviewer built.
-- **Each issue remembers its position.** `InfrastructureIssue` gained `at`, the
-  number of typed characters that come before its line. Add Issue records the end
-  of the text that already exists, so the sequence the reviewer builds is the
-  sequence that prints.
-- **`justificationFieldText` composes, `justificationDraft` decomposes.**
-  `justificationFieldText(issues, typed, separateList)` weaves the generated lines
-  into the typed text; `justificationDraft(fieldValue, issues, separateList)`
-  finds those lines again, removes them, and re-reads their positions on every
-  keystroke, so the typed text is never stored twice.
-- **`formatTaskCompletion` prints the same text the field shows** when the list is
-  not separate, so the Live Output and the field never disagree.
+- **No separate list is plain text.** With the answer set to `No`, Add Issue writes
+  `Agent tries to but` into the Justification field, after the text that is already
+  there and behind a single space. There are no issue rows, no offsets and no
+  composition to keep in sync: the field is the reviewer's text.
+- **Yes is the only shape with rows.** Choosing `Yes` shows the action / failure
+  rows and prints them as the bulleted `Infrastructure/tool call issues:` block
+  below the justification.
+- **The justification is stored as typed.** `InfrastructureIssue.at`,
+  `justificationFieldText` and `justificationDraft` are gone; the textarea reads and
+  writes `taskCompletion.justification` directly, and the Live Output prints the
+  same trimmed text.
 - **Add Issue stays on the Yes / No row, flush right**, with its right edge aligned
   to the issue rows and the empty state below it.
 
 ## Why
-- The reported caveat: an issue added after some justification text was inserted
-  above the text that was already written, breaking the reading order the reviewer
-  had built.
-- The Add Issue button sat tightly against the `No` pill and was not aligned with
-  the list it appends to.
+- Placing generated lines inside the reviewer's text needed offsets, an inverse
+  parse and separator bookkeeping on every keystroke. It was more machinery than
+  the task needs, and it kept producing ordering surprises when the field was
+  edited.
+- Writing one fixed template at the end of the field gives the same reading order
+  with a single pure function, and the reviewer fills the blanks in place.
 
 ## Tests
-- `npm test` — 114 passing (10 files)
-- `npm run build` — passing (266.51 kB JS / 80.31 kB gzip, 28.21 kB CSS)
+- `npm test` — 108 passing (10 files)
+- `npm run build` — passing (265.44 kB JS / 79.90 kB gzip, 28.05 kB CSS)
 
 New coverage:
-- `tests/domain/taskCompletion.test.ts` — an issue recorded at the end of the
-  typed text renders after it behind a single space, issues and text interleave in
-  the added order, text typed after a generated line stays readable, and
-  `justificationDraft` round-trips that field back to the typed text plus the same
-  positions.
-- `tests/integration/taskCompletion.test.tsx` — fill an issue, type the
-  justification, add a second issue: the field and the Live Output both read
-  issue → text → new issue, and the stored justification stays the typed text only.
+- `tests/domain/taskCompletion.test.ts` — `appendInfrastructureTemplate` appends
+  after existing text and behind one space, trims trailing whitespace, and starts a
+  blank field with the template; with `No` the output prints only the justification,
+  with `Yes` it still prints the bulleted block.
+- `tests/integration/taskCompletion.test.tsx` — Add Issue with `No` writes the
+  template after the typed text and repeated presses append again; `Yes` shows the
+  action / failure rows and the bulleted output; switching back to `No` hides the
+  rows and leaves the justification alone; persistence stores the rows without
+  offsets.
 
 ## Review notes / risks
-- Only the folded (`No`) shape embeds the lines; the separate-list (`Yes`) output
-  is untouched — justification first, then the bulleted `Infrastructure/tool call
-  issues:` block.
-- Saved worksheets from before this change have no `at` on their issues; they load
-  with `0`, which keeps the previous "issues above the text" order until the field
-  is edited.
-- Editing a generated line inside the textarea re-renders it from the issue rows;
-  the rows remain the place to change their wording.
+- Issue rows entered under `Yes` are kept in state when the answer changes to `No`,
+  so switching back restores them; they are simply not printed or shown while the
+  answer is `No`.
+- Saved worksheets from earlier builds may still carry `at` on their issues; the
+  reader ignores it.
+- The template is inserted as text only, so a reviewer who edits or deletes it is
+  free to do so — nothing regenerates it.

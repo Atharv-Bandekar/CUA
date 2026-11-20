@@ -1,12 +1,16 @@
-import type { InfrastructureIssue } from '../../domain/taskCompletion';
+import {
+  appendInfrastructureTemplate,
+  INFRASTRUCTURE_ISSUE_TEMPLATE,
+  type InfrastructureIssue,
+} from '../../domain/taskCompletion';
 import { evaluationStore } from '../../state/useEvaluationStore';
 import { RemovableFieldRow } from '../RemovableFieldRow';
 
 export interface InfrastructureIssuesSectionProps {
   issues: InfrastructureIssue[];
-  /** Text the reviewer typed into the justification field. */
-  typedJustification: string;
-  /** true → the live output prints the issues as their own bulleted block. */
+  /** Current justification text; Add Issue writes the template into it. */
+  justification: string;
+  /** true → the issues are their own list, entered as action / failure rows. */
   separateList: boolean;
 }
 
@@ -16,22 +20,26 @@ const SEPARATE_LIST_CHOICES: readonly { label: string; value: boolean }[] = [
 ];
 
 /**
- * Infrastructure / tool call issues for the Task Completion tab. Each issue is
- * recorded as `Agent tries to [action] but [failure]`; the separate-list answer
- * decides whether those lines join the justification or follow it as a list.
+ * Infrastructure / tool call issues for the Task Completion tab. The
+ * separate-list answer picks the shape: with No, Add Issue writes
+ * `Agent tries to but` into the justification field; with Yes, the issues are
+ * recorded as rows and printed as their own bulleted block.
  */
 export function InfrastructureIssuesSection({
   issues,
-  typedJustification,
+  justification,
   separateList,
 }: InfrastructureIssuesSectionProps) {
   function addIssue(): void {
+    if (!separateList) {
+      evaluationStore.updateTaskCompletion({
+        justification: appendInfrastructureTemplate(justification),
+      });
+      return;
+    }
+
     evaluationStore.updateTaskCompletion({
-      // The new line joins the justification after the text that already exists.
-      infrastructureIssues: [
-        ...issues,
-        { action: '', failure: '', at: typedJustification.length },
-      ],
+      infrastructureIssues: [...issues, { action: '', failure: '' }],
     });
   }
 
@@ -93,7 +101,13 @@ export function InfrastructureIssuesSection({
         </div>
       </div>
 
-      {issues.length === 0 ? (
+      {!separateList ? (
+        <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[11px] leading-relaxed text-muted">
+          With no separate list, Add Issue writes{' '}
+          <span className="text-ink">{INFRASTRUCTURE_ISSUE_TEMPLATE}</span> into the Justification
+          field, right after the text already there.
+        </p>
+      ) : issues.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[11px] leading-relaxed text-muted">
           No issues recorded. Use Add Issue and describe each one as{' '}
           <span className="text-ink">Agent tries to [action + target] but [what failed]</span>.
