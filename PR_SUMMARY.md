@@ -1,25 +1,26 @@
-# PR Summary — feat/domain-formatters
+# PR Summary — feat/shell-and-task-completion
 
 ## What changed
 
-- Added `src/domain/taskCompletion.ts`: `TaskCompletionRating` options (5/5 → "Fully Complete" … 1/5 → "Not at all Complete"), `TaskCompletionState`, and `formatTaskCompletion()` with dynamically numbered conditions.
-- Added `src/domain/factualAccuracy.ts`: the shared `FactualAccuracyState` / `Claim` model for World Fact Correctness and Account Factuality, `formatJustificationBuilder()` with index-numbered claims and per-claim sources, and `formatObjectiveClaimsList()`.
-- Added `src/domain/responseExperience.ts`: rating options (5/5 → "Cannot be improved" … 1/5 → "Horrible") plus `formatResponseExperience()`, which emits rating + justification for a perfect score and expected/actual bullets otherwise.
-- Added `src/domain/finalSummary.ts`: `formatFinalSummary(input, responseLabel = 'A')` compiling all four output labels with a `[Not Rated]` fallback.
-- Added `src/domain/ratingOptions.ts` for the shared best-first option lists and output-text lookup; no `(x/5)` prefix is ever printed.
-- Added TDD suites in `tests/domain/`: `taskCompletion`, `factualAccuracy`, `responseExperience`, `finalSummary` (written before implementation, observed failing on missing modules).
+- Added the global evaluation store in `src/state/useEvaluationStore.ts`: one persisted state for all four scored sections, `localStorage` key `ba.evaluation.v1`, defensive parsing, `clearAll()` with a 5-second undo window, `undoClear()`, and a `useEvaluationStore()` / `useUndoState()` React bridge. Verified end-to-end in the new integration tests.
+- Added the responsive shell in `src/components/layout/`: `AppShell` + `AppShellFrame`, a desktop `Sidebar` with the five sections in order, a horizontal `MobileNav` for 400px split-screen windows, a persistent `TopBar` showing the active section title and `Clear All`, and a non-blocking `UndoToast`.
+- Added the Task Completion view in `src/components/task-completion/`: Main Goal input with Yes/No/Partial pills and a `+ Add Condition` button beside it, dynamic condition rows using the shared `RemovableFieldRow` with right-aligned `×`, a five-node horizontal Final Rating track, a rating-aware justification starter pill, and a live output preview with `Copy Task Completion` via the clipboard adapter.
+- Replaced the root `App.tsx` with the new shell; Task Completion is the default view and the other four tabs show a sprint placeholder.
+- Reused the existing `src/adapters/clipboard.ts` and `src/components/RemovableFieldRow.tsx` rather than duplicating them.
+- Added `tests/integration/taskCompletion.test.tsx` (jsdom + Testing Library) covering condition add/delete re-indexing and Clear All / Undo restoration.
 
 ## Why
 
-The review worksheet needs its four report sections to compile to a fixed, review-ready text format with label-only ratings, so the same domain formatters can later back the UI and clipboard output.
+This sprint establishes the app shell and the first complete evaluation section, with the store and undo behaviour that the remaining sections will reuse.
 
 ## Tests
 
-- `npm test` — 71 passing (7 files), including the 29 new domain tests
+- `npm test` — 75 passing (8 files), including 4 new integration tests
 - `npm run build` — `tsc --noEmit` + Vite build passing
 
 ## Review notes / risks
 
-- Unselected ratings render `[Not Rated]` consistently across all formatters; the task spec only defined this fallback for the final summary.
-- `ClaimAccuracy` is modelled as `'Accurate' | 'Inaccurate' | 'Partially Accurate' | 'Cannot Confidently Assess' | ''` because the spec left claim-level accuracy options open; the format line prints `{classification} - {accuracy}`.
-- Claim and point text is trimmed; only `formatObjectiveClaimsList` collapses internal whitespace to one line, as specified.
+- `useEvaluationStore.ts` imports React because it exposes hooks, as this sprint's file name requires; the rest of the persistence and undo logic stays framework-agnostic and is exercised through the singleton in tests.
+- Quick pills map to the five-point scale (`Yes` → 5/5, `Partial` → 3/5, `No` → 1/5), so the preview prints the domain's output labels.
+- Condition rows are index-keyed because the domain model has no id field; removal renumbers from the array index.
+- The other four section views are placeholders until their sprints.
