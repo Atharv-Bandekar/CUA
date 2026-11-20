@@ -102,6 +102,54 @@ export function infrastructureIssueLines(issues: readonly InfrastructureIssue[])
 }
 
 /**
+ * Value of the justification field. With a combined justification the issue
+ * lines are shown inside the field above the typed text, so the reviewer sees
+ * exactly the order the output prints; with a separate list the field holds the
+ * typed text only.
+ */
+export function justificationFieldText(
+  issues: readonly InfrastructureIssue[],
+  typed: string,
+  separateList: boolean,
+): string {
+  const lines = separateList ? [] : infrastructureIssueLines(issues);
+
+  if (lines.length === 0) {
+    return typed;
+  }
+
+  // The typed text always starts on its own line, so pressing Enter at the end
+  // of the generated issue lines starts a new line instead of being swallowed.
+  return `${lines.join('\n')}\n${typed}`;
+}
+
+/**
+ * Inverse of `justificationFieldText`: drops the generated issue lines the field
+ * starts with, leaving the text the reviewer typed. Lines are compared one by
+ * one so an edit further down the field never loses typed text.
+ */
+export function typedJustification(
+  fieldValue: string,
+  issues: readonly InfrastructureIssue[],
+  separateList: boolean,
+): string {
+  const lines = separateList ? [] : infrastructureIssueLines(issues);
+
+  if (lines.length === 0) {
+    return fieldValue;
+  }
+
+  const parts = fieldValue.split('\n');
+  let generated = 0;
+
+  while (generated < lines.length && parts[generated] === lines[generated]) {
+    generated += 1;
+  }
+
+  return parts.slice(generated).join('\n');
+}
+
+/**
  * Compiles the task completion block. Conditions are numbered from their array
  * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
  * and condition statuses print as Yes / No, while the final rating prints its

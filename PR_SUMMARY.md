@@ -1,45 +1,48 @@
 # PR Summary — feat/infrastructure-issue-order
 
 ## What changed
-- **Issue lines print first when the list is not separate.** `formatTaskCompletion`
-  now emits the `Agent tries to … but …` lines above the typed justification text
-  instead of below it, so a combined justification follows the order the reviewer
-  recorded things in: issues first, justification text second.
-- **The Justification field shows those lines.** When the separate-list answer is
-  `No` and at least one issue is filled in, the Task Completion justification card
-  renders the printable issue lines directly above the text area, with a one-line
-  note that they print before the typed text. They disappear when the answer is
-  switched to `Yes`, because they then move to their own bulleted block.
-- **`infrastructureIssueLines` is exported** from the domain so the UI and the
-  output share one formatter instead of duplicating the template.
-- **Add Issue moved to its own right-aligned row** under the Yes / No question, so
-  it lines up with the remove buttons of the issue rows below it instead of being
-  crowded against the `No` button.
+- **Folded issue lines live in the Justification field itself.** With the
+  separate-list answer set to `No`, the Task Completion justification textarea now
+  shows the `Agent tries to … but …` lines above the text the reviewer types. The
+  lines are generated from the issue rows, always sit above the typed text, and
+  follow any edit to a row's action or failure.
+- **Typed text is stored separately from the generated lines.**
+  `justificationFieldText` composes the field value and `typedJustification`
+  recovers the typed text on edit, so the issue rows stay the source of truth and
+  no text is duplicated in storage or in the output.
+- **`formatTaskCompletion` prints the issues before the justification text** when
+  the list is not separate, so the printed order matches what the field shows.
+- **Add Issue stays on the Yes / No row, flush right.** The question, its pills and
+  the button live in a right-aligned cluster, so Add Issue's right edge lines up
+  vertically with the issue rows below it at every width, with a wider gap from the
+  `No` pill.
 
 ## Why
 - The reported caveat: with the list set to `No`, issues added first still printed
-  after the justification text, so the on-screen and printed sequence disagreed
-  with the order the reviewer worked in.
-- The Add Issue button sat tightly against the `No` pill and looked detached from
+  after the justification text, and the field being filled did not show them at
+  all, so the visual sequence did not match the output.
+- The Add Issue button sat tightly against the `No` pill and was not aligned with
   the list it appends to.
 
 ## Tests
-- `npm test` — 108 passing (10 files)
-- `npm run build` — passing (265.57 kB JS / 79.93 kB gzip, 28.27 kB CSS)
+- `npm test` — 110 passing (10 files)
+- `npm run build` — passing (265.59 kB JS / 80.01 kB gzip, 28.21 kB CSS)
 
 New coverage:
-- `tests/domain/taskCompletion.test.ts` — folded issues print above the
-  justification text, keep that order when the justification is typed afterwards,
-  and `infrastructureIssueLines` drops empty rows.
-- `tests/integration/taskCompletion.test.tsx` — the justification card shows the
-  issue lines, the live output keeps them before the typed text, and they
-  disappear when the separate list is selected.
+- `tests/domain/taskCompletion.test.ts` — `justificationFieldText` puts the issue
+  lines above the typed text and stays inert for a separate list;
+  `typedJustification` recovers the typed text and the folded order is preserved
+  when the justification is written after the issues.
+- `tests/integration/taskCompletion.test.tsx` — adding and editing an issue updates
+  the justification field text while the typed text survives, the live output
+  keeps the issues first, and switching to a separate list strips them from the
+  field.
 
 ## Review notes / risks
-- Only the folded (`No`) shape changed order; the separate-list (`Yes`) output is
-  untouched — justification first, then the bulleted `Infrastructure/tool call
+- Only the folded (`No`) shape embeds the lines; the separate-list (`Yes`) output
+  is untouched — justification first, then the bulleted `Infrastructure/tool call
   issues:` block.
-- Stored data is unchanged, so existing saved worksheets re-render with the new
-  order and need no migration.
-- The issue lines in the justification card are a read-only preview; editing still
-  happens in the issue rows, which remain the source of truth.
+- Stored data is unchanged (`justification` still holds the typed text only), so
+  existing saved worksheets re-render correctly with no migration.
+- Editing a generated line inside the textarea re-renders it from the issue rows;
+  the rows remain the place to change their wording.

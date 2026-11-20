@@ -7,8 +7,10 @@ import {
   formatInfrastructureIssue,
   formatTaskCompletion,
   infrastructureIssueLines,
+  justificationFieldText,
   taskCompletionRatingLabel,
   taskCompletionStatusLabel,
+  typedJustification,
 } from '../../src/domain/taskCompletion';
 import type { InfrastructureIssue, TaskCompletionState } from '../../src/domain/taskCompletion';
 
@@ -212,12 +214,44 @@ describe('infrastructure issues', () => {
     );
   });
 
-  it('returns the printable issue lines for the justification preview', () => {
+  it('returns the printable issue lines for the justification field', () => {
     expect(infrastructureIssueLines(infrastructureIssues)).toEqual([
       'Agent tries to open the CRM ticket but the tool returned a 403',
       'Agent tries to read the attached spreadsheet but the file did not load',
     ]);
     expect(infrastructureIssueLines([{ action: '', failure: ' ' }])).toEqual([]);
+  });
+
+  it('shows the folded issues at the top of the justification field value', () => {
+    expect(justificationFieldText(infrastructureIssues, '', false)).toBe(
+      [
+        'Agent tries to open the CRM ticket but the tool returned a 403',
+        'Agent tries to read the attached spreadsheet but the file did not load',
+        '',
+      ].join('\n'),
+    );
+    expect(justificationFieldText(infrastructureIssues, 'All tickets closed.', false)).toBe(
+      [
+        'Agent tries to open the CRM ticket but the tool returned a 403',
+        'Agent tries to read the attached spreadsheet but the file did not load',
+        'All tickets closed.',
+      ].join('\n'),
+    );
+    expect(justificationFieldText(infrastructureIssues, 'All tickets closed.', true)).toBe(
+      'All tickets closed.',
+    );
+    expect(justificationFieldText([], 'All tickets closed.', false)).toBe('All tickets closed.');
+  });
+
+  it('recovers the typed text from the justification field value', () => {
+    const folded = justificationFieldText(infrastructureIssues, 'All tickets closed.', false);
+
+    expect(typedJustification(folded, infrastructureIssues, false)).toBe('All tickets closed.');
+    expect(
+      typedJustification(justificationFieldText(infrastructureIssues, '', false), infrastructureIssues, false),
+    ).toBe('');
+    expect(typedJustification(folded, infrastructureIssues, true)).toBe(folded);
+    expect(typedJustification('Only my text.', [], false)).toBe('Only my text.');
   });
 
   it('prints the issues on the justification line when no justification was typed', () => {

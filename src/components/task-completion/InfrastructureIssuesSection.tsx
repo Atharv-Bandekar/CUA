@@ -41,10 +41,12 @@ export function InfrastructureIssuesSection({ issues, separateList }: Infrastruc
 
   return (
     <section className="card min-w-0 space-y-2.5 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="field-label">Infrastructure / tool call issues</h2>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="field-label min-w-0">Infrastructure / tool call issues</h2>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* ml-auto + justify-end keeps the question, its pills and Add Issue flush
+            with the right edge of the issue rows below them, even when they wrap. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
           <span className="text-[11px] text-muted">Want a separate Infrastructure list?</span>
           <div
             className="flex flex-wrap items-center gap-1.5"
@@ -75,13 +77,10 @@ export function InfrastructureIssuesSection({ issues, separateList }: Infrastruc
               );
             })}
           </div>
+          <button type="button" onClick={addIssue} className="add-button ml-1 shrink-0 whitespace-nowrap">
+            + Add Issue
+          </button>
         </div>
-      </div>
-
-      <div className="flex items-center justify-end">
-        <button type="button" onClick={addIssue} className="add-button shrink-0 whitespace-nowrap">
-          + Add Issue
-        </button>
       </div>
 
       {issues.length === 0 ? (

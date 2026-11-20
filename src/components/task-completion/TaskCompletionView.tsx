@@ -2,7 +2,9 @@ import { Sparkles } from 'lucide-react';
 import { pluralize } from '../../domain/format';
 import {
   infrastructureIssueLines,
+  justificationFieldText,
   taskCompletionRatingLabel,
+  typedJustification,
   type TaskCompletionCondition,
 } from '../../domain/taskCompletion';
 import { evaluationStore, useEvaluationStore } from '../../state/useEvaluationStore';
@@ -15,11 +17,17 @@ import { TaskCompletionPreview } from './TaskCompletionPreview';
 export function TaskCompletionView() {
   const { taskCompletion } = useEvaluationStore();
   const conditions = taskCompletion.conditions;
-  // With a combined justification the issues print first, so they are shown
-  // above the text area to keep the on-screen order the same as the output.
-  const foldedIssues = taskCompletion.separateInfrastructureList
-    ? []
-    : infrastructureIssueLines(taskCompletion.infrastructureIssues);
+  // With a combined justification the issue lines live in the justification
+  // field itself, above the typed text, so the field shows exactly the order
+  // the output prints and never falls out of sync with the issue rows.
+  const justificationValue = justificationFieldText(
+    taskCompletion.infrastructureIssues,
+    taskCompletion.justification,
+    taskCompletion.separateInfrastructureList,
+  );
+  const foldedIssues =
+    !taskCompletion.separateInfrastructureList &&
+    infrastructureIssueLines(taskCompletion.infrastructureIssues).length > 0;
 
   function addCondition(): void {
     evaluationStore.updateTaskCompletion({
@@ -172,35 +180,28 @@ export function TaskCompletionView() {
               Starter
             </button>
           </div>
-          {foldedIssues.length > 0 && (
-            <div
-              data-testid="justification-issue-prefix"
-              className="rounded-lg border border-line bg-canvas px-2.5 py-2 text-[11px] leading-relaxed text-muted"
-            >
-              <ul className="space-y-0.5">
-                {foldedIssues.map((line, index) => (
-                  <li key={`${index}-${line}`}>{line}</li>
-                ))}
-              </ul>
-              <p className="mt-1 text-[10px] text-muted/80">
-                These print before your justification text.
-              </p>
-            </div>
-          )}
           <textarea
             id="task-justification"
             className="field-input resize-y"
-            rows={3}
-            placeholder={
-              foldedIssues.length > 0
-                ? 'Add your justification — it prints after the issues above.'
-                : 'Why did the response earn this rating?'
-            }
-            value={taskCompletion.justification}
+            rows={foldedIssues ? 5 : 3}
+            placeholder="Why did the response earn this rating?"
+            value={justificationValue}
             onChange={(event) =>
-              evaluationStore.updateTaskCompletion({ justification: event.target.value })
+              evaluationStore.updateTaskCompletion({
+                justification: typedJustification(
+                  event.target.value,
+                  taskCompletion.infrastructureIssues,
+                  taskCompletion.separateInfrastructureList,
+                ),
+              })
             }
           />
+          {foldedIssues && (
+            <p className="text-[10px] leading-relaxed text-muted/80">
+              The issue lines at the top of this field are generated from the rows above and print
+              first.
+            </p>
+          )}
         </div>
       </section>
 

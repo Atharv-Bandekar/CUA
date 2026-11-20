@@ -155,7 +155,7 @@ describe('Infrastructure issues', () => {
     expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
   });
 
-  it('shows the folded issues above the justification text and prints them first', async () => {
+  it('writes the folded issues into the justification field above the typed text', async () => {
     const user = userEvent.setup();
     render(<App />);
 
@@ -169,11 +169,16 @@ describe('Infrastructure issues', () => {
       'the tool returned a 403',
     );
 
-    expect(screen.getByTestId('justification-issue-prefix').textContent).toContain(
-      'Agent tries to open the CRM ticket but the tool returned a 403',
-    );
+    const justification = screen.getByLabelText('Justification') as HTMLTextAreaElement;
+    const issueLine = 'Agent tries to open the CRM ticket but the tool returned a 403';
 
-    await user.type(screen.getByLabelText('Justification'), 'Tickets stayed open.');
+    expect(justification.value).toBe(`${issueLine}\n`);
+
+    // The field already ends on a fresh line, so the typed text lands below the issues.
+    await user.type(justification, 'Tickets stayed open.');
+
+    expect(justification.value).toBe(`${issueLine}\nTickets stayed open.`);
+    expect(evaluationStore.getState().taskCompletion.justification).toBe('Tickets stayed open.');
 
     const output = screen.getByTestId('task-completion-output').textContent ?? '';
     const issueAt = output.indexOf('Agent tries to open the CRM ticket');
@@ -182,6 +187,15 @@ describe('Infrastructure issues', () => {
     expect(issueAt).toBeGreaterThan(-1);
     expect(textAt).toBeGreaterThan(issueAt);
 
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 attempted action'),
+      ' again',
+    );
+
+    expect(justification.value).toBe(
+      `Agent tries to open the CRM ticket again but the tool returned a 403\nTickets stayed open.`,
+    );
+
     await user.click(
       within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
         'button',
@@ -189,7 +203,7 @@ describe('Infrastructure issues', () => {
       ),
     );
 
-    expect(screen.queryByTestId('justification-issue-prefix')).toBeNull();
+    expect(justification.value).toBe('Tickets stayed open.');
   });
 
   it('persists the issues and the separate-list answer', async () => {
