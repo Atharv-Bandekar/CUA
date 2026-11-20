@@ -44,13 +44,29 @@ export interface TaskCompletionCondition {
   status: TaskCompletionRating | '';
 }
 
+export interface InfrastructureIssue {
+  /** Text after "Agent tries to". */
+  action: string;
+  /** Text after "but". */
+  failure: string;
+}
+
 export interface TaskCompletionState {
   mainGoal: string;
   mainGoalStatus: TaskCompletionRating | '';
   conditions: TaskCompletionCondition[];
   finalRating: TaskCompletionRating | '';
   justification: string;
+  /**
+   * true prints the issues as their own bulleted block below the justification;
+   * false folds them into the justification text itself.
+   */
+  separateInfrastructureList: boolean;
+  infrastructureIssues: InfrastructureIssue[];
 }
+
+/** Heading printed above the standalone issue list. */
+export const INFRASTRUCTURE_ISSUES_HEADING = 'Infrastructure/tool call issues:';
 
 export function taskCompletionRatingLabel(rating: TaskCompletionRating | ''): string {
   return ratingOptionLabel(TASK_COMPLETION_RATINGS, rating);
@@ -62,12 +78,40 @@ export function taskCompletionStatusLabel(status: TaskCompletionRating | ''): st
 }
 
 /**
+ * `Agent tries to <action> but <failure>`. The label words are fixed; blank
+ * slots are dropped so a half-filled row never prints doubled spaces. A row
+ * where both fields are empty renders as an empty string and is not printed.
+ */
+export function formatInfrastructureIssue(issue: InfrastructureIssue): string {
+  const action = issue.action.trim();
+  const failure = issue.failure.trim();
+
+  if (action === '' && failure === '') {
+    return '';
+  }
+
+  return ['Agent tries to', action, 'but', failure].filter((part) => part !== '').join(' ');
+}
+
+function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): string[] {
+  return issues.map(formatInfrastructureIssue).filter((line) => line !== '');
+}
+
+/**
  * Compiles the task completion block. Conditions are numbered from their array
  * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
  * and condition statuses print as Yes / No, while the final rating prints its
- * scale label.
+ * scale label. Infrastructure issues either join the justification text or
+ * follow it as their own bulleted block, depending on the separate-list answer.
  */
 export function formatTaskCompletion(state: TaskCompletionState): string {
+  const issueLines = infrastructureIssueLines(state.infrastructureIssues);
+  const separateIssues = state.separateInfrastructureList && issueLines.length > 0;
+
+  const justificationText = [state.justification.trim(), ...(separateIssues ? [] : issueLines)]
+    .filter((part) => part !== '')
+    .join('\n');
+
   const blocks: string[] = [
     `Main Goal fulfilled? (${state.mainGoal}): ${taskCompletionStatusLabel(state.mainGoalStatus)}`,
     ...state.conditions.map(
@@ -76,9 +120,15 @@ export function formatTaskCompletion(state: TaskCompletionState): string {
     ),
     [
       `Final Rating: ${taskCompletionRatingLabel(state.finalRating)}`,
-      `Justification: ${state.justification}`,
+      `Justification: ${justificationText}`,
     ].join('\n'),
   ];
+
+  if (separateIssues) {
+    blocks.push(
+      [INFRASTRUCTURE_ISSUES_HEADING, ...issueLines.map((line) => `• ${line}`)].join('\n'),
+    );
+  }
 
   return blocks.join('\n\n');
 }

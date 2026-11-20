@@ -102,6 +102,117 @@ describe('Task Completion status pills', () => {
   });
 });
 
+describe('Infrastructure issues', () => {
+  it('records an issue with two fields and prints it in the requested template', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(screen.queryByLabelText('Infrastructure issue 1 attempted action')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 attempted action'),
+      'open the CRM ticket',
+    );
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 failure'),
+      'the tool returned a 403',
+    );
+
+    expect(screen.getByTestId('task-completion-output').textContent).toContain(
+      'Agent tries to open the CRM ticket but the tool returned a 403',
+    );
+  });
+
+  it('moves the issues between the separate list and the justification', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 attempted action'),
+      'open the CRM ticket',
+    );
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 failure'),
+      'the tool returned a 403',
+    );
+
+    const output = () => screen.getByTestId('task-completion-output').textContent ?? '';
+    const separateList = screen.getByRole('group', { name: 'Separate infrastructure list' });
+
+    expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
+    expect(output()).not.toContain('Infrastructure/tool call issues:');
+
+    await user.click(within(separateList).getByRole('button', { name: 'Yes' }));
+
+    expect(output()).toContain('Infrastructure/tool call issues:');
+    expect(output()).toContain('• Agent tries to open the CRM ticket but the tool returned a 403');
+
+    await user.click(within(separateList).getByRole('button', { name: 'No' }));
+
+    expect(output()).not.toContain('Infrastructure/tool call issues:');
+    expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
+  });
+
+  it('persists the issues and the separate-list answer', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 attempted action'),
+      'open the CRM ticket',
+    );
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 failure'),
+      'the tool returned a 403',
+    );
+    await user.click(
+      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
+        'button',
+        { name: 'Yes' },
+      ),
+    );
+
+    const stored = JSON.parse(localStorage.getItem('ba.evaluation.v1') ?? '{}') as {
+      taskCompletion?: {
+        separateInfrastructureList?: boolean;
+        infrastructureIssues?: { action: string; failure: string }[];
+      };
+    };
+
+    expect(stored.taskCompletion?.separateInfrastructureList).toBe(true);
+    expect(stored.taskCompletion?.infrastructureIssues).toEqual([
+      { action: 'open the CRM ticket', failure: 'the tool returned a 403' },
+    ]);
+  });
+
+  it('removes an issue row and keeps the remaining rows numbered', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const addIssue = screen.getByRole('button', { name: '+ Add Issue' });
+    await user.click(addIssue);
+    await user.click(addIssue);
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 2 attempted action'),
+      'read the attached spreadsheet',
+    );
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 2 failure'),
+      'the file did not load',
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Remove infrastructure issue 1' }));
+
+    expect(screen.queryByLabelText('Infrastructure issue 2 attempted action')).toBeNull();
+    expect(fieldValue('Infrastructure issue 1 attempted action')).toBe(
+      'read the attached spreadsheet',
+    );
+  });
+});
+
 describe('Clear All', () => {
   it('resets every section and restores it through the Undo toast', async () => {
     const user = userEvent.setup();

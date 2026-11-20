@@ -20,6 +20,7 @@ import {
 } from '../domain/responseExperience';
 import {
   TASK_COMPLETION_OPTIONS,
+  type InfrastructureIssue,
   type TaskCompletionCondition,
   type TaskCompletionRating,
   type TaskCompletionState,
@@ -70,6 +71,8 @@ export function createEmptyTaskCompletionState(): TaskCompletionState {
     conditions: [],
     finalRating: '',
     justification: '',
+    separateInfrastructureList: false,
+    infrastructureIssues: [],
   };
 }
 
@@ -173,6 +176,18 @@ function readConditions(value: unknown): TaskCompletionCondition[] {
   });
 }
 
+function readInfrastructureIssues(value: unknown): InfrastructureIssue[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((entry): InfrastructureIssue[] =>
+    isRecord(entry)
+      ? [{ action: readString(entry.action), failure: readString(entry.failure) }]
+      : [],
+  );
+}
+
 function readTaskCompletion(value: unknown): TaskCompletionState {
   if (!isRecord(value)) {
     return createEmptyTaskCompletionState();
@@ -186,6 +201,8 @@ function readTaskCompletion(value: unknown): TaskCompletionState {
     conditions: readConditions(value.conditions),
     finalRating: isOneOf(value.finalRating, TASK_COMPLETION_VALUES) ? value.finalRating : '',
     justification: readString(value.justification),
+    separateInfrastructureList: value.separateInfrastructureList === true,
+    infrastructureIssues: readInfrastructureIssues(value.infrastructureIssues),
   };
 }
 
