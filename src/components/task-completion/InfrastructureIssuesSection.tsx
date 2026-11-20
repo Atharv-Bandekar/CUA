@@ -1,10 +1,16 @@
-import type { InfrastructureIssue } from '../../domain/taskCompletion';
+import {
+  appendInfrastructureTemplate,
+  INFRASTRUCTURE_ISSUE_TEMPLATE,
+  type InfrastructureIssue,
+} from '../../domain/taskCompletion';
 import { evaluationStore } from '../../state/useEvaluationStore';
 import { RemovableFieldRow } from '../RemovableFieldRow';
 
 export interface InfrastructureIssuesSectionProps {
   issues: InfrastructureIssue[];
-  /** true → the live output prints the issues as their own bulleted block. */
+  /** Current justification text; Add Issue writes the template into it. */
+  justification: string;
+  /** true → the issues are their own list, entered as action / failure rows. */
   separateList: boolean;
 }
 
@@ -14,12 +20,24 @@ const SEPARATE_LIST_CHOICES: readonly { label: string; value: boolean }[] = [
 ];
 
 /**
- * Infrastructure / tool call issues for the Task Completion tab. Each issue is
- * recorded as `Agent tries to [action] but [failure]`; the separate-list answer
- * decides whether those lines join the justification or follow it as a list.
+ * Infrastructure / tool call issues for the Task Completion tab. The
+ * separate-list answer picks the shape: with No, Add Issue writes
+ * `Agent tries to but` into the justification field; with Yes, the issues are
+ * recorded as rows and printed as their own bulleted block.
  */
-export function InfrastructureIssuesSection({ issues, separateList }: InfrastructureIssuesSectionProps) {
+export function InfrastructureIssuesSection({
+  issues,
+  justification,
+  separateList,
+}: InfrastructureIssuesSectionProps) {
   function addIssue(): void {
+    if (!separateList) {
+      evaluationStore.updateTaskCompletion({
+        justification: appendInfrastructureTemplate(justification),
+      });
+      return;
+    }
+
     evaluationStore.updateTaskCompletion({
       infrastructureIssues: [...issues, { action: '', failure: '' }],
     });
@@ -41,10 +59,12 @@ export function InfrastructureIssuesSection({ issues, separateList }: Infrastruc
 
   return (
     <section className="card min-w-0 space-y-2.5 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="field-label">Infrastructure / tool call issues</h2>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <h2 className="field-label min-w-0">Infrastructure / tool call issues</h2>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* ml-auto + justify-end keeps the question, its pills and Add Issue flush
+            with the right edge of the issue rows below them, even when they wrap. */}
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-x-3 gap-y-1.5">
           <span className="text-[11px] text-muted">Want a separate Infrastructure list?</span>
           <div
             className="flex flex-wrap items-center gap-1.5"
@@ -75,13 +95,19 @@ export function InfrastructureIssuesSection({ issues, separateList }: Infrastruc
               );
             })}
           </div>
-          <button type="button" onClick={addIssue} className="add-button shrink-0 whitespace-nowrap">
+          <button type="button" onClick={addIssue} className="add-button ml-1 shrink-0 whitespace-nowrap">
             + Add Issue
           </button>
         </div>
       </div>
 
-      {issues.length === 0 ? (
+      {!separateList ? (
+        <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[11px] leading-relaxed text-muted">
+          With no separate list, Add Issue writes{' '}
+          <span className="text-ink">{INFRASTRUCTURE_ISSUE_TEMPLATE}</span> into the Justification
+          field, right after the text already there.
+        </p>
+      ) : issues.length === 0 ? (
         <p className="rounded-lg border border-dashed border-line px-3 py-4 text-center text-[11px] leading-relaxed text-muted">
           No issues recorded. Use Add Issue and describe each one as{' '}
           <span className="text-ink">Agent tries to [action + target] but [what failed]</span>.

@@ -14,6 +14,10 @@ import { TaskCompletionPreview } from './TaskCompletionPreview';
 export function TaskCompletionView() {
   const { taskCompletion } = useEvaluationStore();
   const conditions = taskCompletion.conditions;
+  // The justification is plain text. With no separate list it is the only place
+  // the issues are described, so Add Issue writes the template straight into it
+  // and nothing has to be composed or parsed back.
+  const justificationValue = taskCompletion.justification;
 
   function addCondition(): void {
     evaluationStore.updateTaskCompletion({
@@ -136,6 +140,7 @@ export function TaskCompletionView() {
 
       <InfrastructureIssuesSection
         issues={taskCompletion.infrastructureIssues}
+        justification={taskCompletion.justification}
         separateList={taskCompletion.separateInfrastructureList}
       />
 
@@ -171,7 +176,7 @@ export function TaskCompletionView() {
             className="field-input resize-y"
             rows={3}
             placeholder="Why did the response earn this rating?"
-            value={taskCompletion.justification}
+            value={justificationValue}
             onChange={(event) =>
               evaluationStore.updateTaskCompletion({ justification: event.target.value })
             }

@@ -109,6 +109,12 @@ describe('Infrastructure issues', () => {
 
     expect(screen.queryByLabelText('Infrastructure issue 1 attempted action')).toBeNull();
 
+    await user.click(
+      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
+        'button',
+        { name: 'Yes' },
+      ),
+    );
     await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
     await user.type(
       screen.getByLabelText('Infrastructure issue 1 attempted action'),
@@ -124,11 +130,26 @@ describe('Infrastructure issues', () => {
     );
   });
 
-  it('moves the issues between the separate list and the justification', async () => {
+  it('writes the template into the justification when there is no separate list', async () => {
     const user = userEvent.setup();
     render(<App />);
 
-    await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
+    const justification = () => screen.getByLabelText('Justification') as HTMLTextAreaElement;
+    const addIssue = screen.getByRole('button', { name: '+ Add Issue' });
+    const output = () => screen.getByTestId('task-completion-output').textContent ?? '';
+
+    await user.type(justification(), 'Tickets stayed open.');
+    await user.click(addIssue);
+
+    expect(justification().value).toBe('Tickets stayed open. Agent tries to but');
+    expect(output()).toContain('Justification: Tickets stayed open. Agent tries to but');
+    expect(screen.queryByLabelText('Infrastructure issue 1 attempted action')).toBeNull();
+    expect(output()).not.toContain('Infrastructure/tool call issues:');
+
+    // Yes switches to the action / failure rows and the bulleted block.
+    const separateList = screen.getByRole('group', { name: 'Separate infrastructure list' });
+    await user.click(within(separateList).getByRole('button', { name: 'Yes' }));
+    await user.click(addIssue);
     await user.type(
       screen.getByLabelText('Infrastructure issue 1 attempted action'),
       'open the CRM ticket',
@@ -138,27 +159,54 @@ describe('Infrastructure issues', () => {
       'the tool returned a 403',
     );
 
-    const output = () => screen.getByTestId('task-completion-output').textContent ?? '';
-    const separateList = screen.getByRole('group', { name: 'Separate infrastructure list' });
-
-    expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
-    expect(output()).not.toContain('Infrastructure/tool call issues:');
-
-    await user.click(within(separateList).getByRole('button', { name: 'Yes' }));
-
     expect(output()).toContain('Infrastructure/tool call issues:');
     expect(output()).toContain('• Agent tries to open the CRM ticket but the tool returned a 403');
+    expect(justification().value).toBe('Tickets stayed open. Agent tries to but');
 
+    // Back to No: the rows are hidden and the justification stands alone.
     await user.click(within(separateList).getByRole('button', { name: 'No' }));
 
+    expect(screen.queryByLabelText('Infrastructure issue 1 attempted action')).toBeNull();
     expect(output()).not.toContain('Infrastructure/tool call issues:');
-    expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
+    expect(output()).toContain('Justification: Tickets stayed open. Agent tries to but');
+  });
+
+  it('keeps writing the template after the text already in the field', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    const justification = () => screen.getByLabelText('Justification') as HTMLTextAreaElement;
+    const addIssue = screen.getByRole('button', { name: '+ Add Issue' });
+
+    await user.click(addIssue);
+
+    expect(justification().value).toBe('Agent tries to but');
+
+    await user.type(justification(), ' closed the tickets.');
+
+    expect(justification().value).toBe('Agent tries to but closed the tickets.');
+
+    await user.click(addIssue);
+
+    expect(justification().value).toBe('Agent tries to but closed the tickets. Agent tries to but');
+    expect(evaluationStore.getState().taskCompletion.justification).toBe(
+      'Agent tries to but closed the tickets. Agent tries to but',
+    );
+    expect(screen.getByTestId('task-completion-output').textContent).toContain(
+      'Justification: Agent tries to but closed the tickets. Agent tries to but',
+    );
   });
 
   it('persists the issues and the separate-list answer', async () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await user.click(
+      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
+        'button',
+        { name: 'Yes' },
+      ),
+    );
     await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
     await user.type(
       screen.getByLabelText('Infrastructure issue 1 attempted action'),
@@ -167,12 +215,6 @@ describe('Infrastructure issues', () => {
     await user.type(
       screen.getByLabelText('Infrastructure issue 1 failure'),
       'the tool returned a 403',
-    );
-    await user.click(
-      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
-        'button',
-        { name: 'Yes' },
-      ),
     );
 
     const stored = JSON.parse(localStorage.getItem('ba.evaluation.v1') ?? '{}') as {
@@ -192,6 +234,12 @@ describe('Infrastructure issues', () => {
     const user = userEvent.setup();
     render(<App />);
 
+    await user.click(
+      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
+        'button',
+        { name: 'Yes' },
+      ),
+    );
     const addIssue = screen.getByRole('button', { name: '+ Add Issue' });
     await user.click(addIssue);
     await user.click(addIssue);

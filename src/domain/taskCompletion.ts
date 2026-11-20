@@ -56,17 +56,25 @@ export interface TaskCompletionState {
   mainGoalStatus: TaskCompletionRating | '';
   conditions: TaskCompletionCondition[];
   finalRating: TaskCompletionRating | '';
+  /**
+   * The justification text. With no separate list this is the only place the
+   * issues are described, and Add Issue writes the template into it.
+   */
   justification: string;
   /**
    * true prints the issues as their own bulleted block below the justification;
-   * false folds them into the justification text itself.
+   * false keeps the justification text alone.
    */
   separateInfrastructureList: boolean;
+  /** Rows of the separate list; only used when the list is separate. */
   infrastructureIssues: InfrastructureIssue[];
 }
 
 /** Heading printed above the standalone issue list. */
 export const INFRASTRUCTURE_ISSUES_HEADING = 'Infrastructure/tool call issues:';
+
+/** Text Add Issue writes into the justification when the list is not separate. */
+export const INFRASTRUCTURE_ISSUE_TEMPLATE = 'Agent tries to but';
 
 export function taskCompletionRatingLabel(rating: TaskCompletionRating | ''): string {
   return ratingOptionLabel(TASK_COMPLETION_RATINGS, rating);
@@ -75,6 +83,16 @@ export function taskCompletionRatingLabel(rating: TaskCompletionRating | ''): st
 /** Yes / No text for the main goal and condition statuses. */
 export function taskCompletionStatusLabel(status: TaskCompletionRating | ''): string {
   return ratingOptionLabel(TASK_COMPLETION_STATUS_RATINGS, status);
+}
+
+/**
+ * Appends the `Agent tries to but` template after the justification text that
+ * already exists, behind a single space, so the reviewer fills the blank slots
+ * in place. A blank field starts with the template itself.
+ */
+export function appendInfrastructureTemplate(justification: string): string {
+  const base = justification.replace(/\s+$/, '');
+  return base === '' ? INFRASTRUCTURE_ISSUE_TEMPLATE : `${base} ${INFRASTRUCTURE_ISSUE_TEMPLATE}`;
 }
 
 /**
@@ -93,7 +111,11 @@ export function formatInfrastructureIssue(issue: InfrastructureIssue): string {
   return ['Agent tries to', action, 'but', failure].filter((part) => part !== '').join(' ');
 }
 
-function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): string[] {
+/**
+ * Printable `Agent tries to … but …` lines, in row order. Empty rows are
+ * dropped so numbering never leaves a hole in the output.
+ */
+export function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): string[] {
   return issues.map(formatInfrastructureIssue).filter((line) => line !== '');
 }
 
@@ -101,16 +123,12 @@ function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): strin
  * Compiles the task completion block. Conditions are numbered from their array
  * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
  * and condition statuses print as Yes / No, while the final rating prints its
- * scale label. Infrastructure issues either join the justification text or
- * follow it as their own bulleted block, depending on the separate-list answer.
+ * scale label. With a separate list the issue rows follow the justification as
+ * their own bulleted block; without one the justification text stands alone.
  */
 export function formatTaskCompletion(state: TaskCompletionState): string {
   const issueLines = infrastructureIssueLines(state.infrastructureIssues);
   const separateIssues = state.separateInfrastructureList && issueLines.length > 0;
-
-  const justificationText = [state.justification.trim(), ...(separateIssues ? [] : issueLines)]
-    .filter((part) => part !== '')
-    .join('\n');
 
   const blocks: string[] = [
     `Main Goal fulfilled? (${state.mainGoal}): ${taskCompletionStatusLabel(state.mainGoalStatus)}`,
@@ -120,7 +138,7 @@ export function formatTaskCompletion(state: TaskCompletionState): string {
     ),
     [
       `Final Rating: ${taskCompletionRatingLabel(state.finalRating)}`,
-      `Justification: ${justificationText}`,
+      `Justification: ${state.justification.trim()}`,
     ].join('\n'),
   ];
 
