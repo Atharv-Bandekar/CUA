@@ -46,6 +46,35 @@ export const CLAIM_ACCURACIES: readonly Exclude<ClaimAccuracy, ''>[] = [
   "Can't confidently assess",
 ];
 
+export type FactualitySectionKind = 'worldFactCorrectness' | 'accountFactuality';
+
+/** Accuracy value that rules out any checkable justification. */
+export const CANNOT_ASSESS_ACCURACY: Exclude<ClaimAccuracy, ''> = "Can't confidently assess";
+
+/**
+ * Fixed justification openers offered by the Predefined dropdown, in the order
+ * they are listed. Picking one replaces the claim's justification verbatim.
+ */
+export const CLAIM_JUSTIFICATION_PRESETS: readonly string[] = [
+  "Agent's log confirms it.",
+  "Agent's log and a screenshot in it confirm it.",
+  "Agent's logs and screenshots in them confirm it.",
+  "Agent's log and the content in it confirm it.",
+  "Agent's logs and the content in them confirm it.",
+];
+
+/** Claim justification written when nothing checkable exists in the section. */
+export const CLAIM_CANNOT_ASSESS_JUSTIFICATIONS: Record<FactualitySectionKind, string> = {
+  worldFactCorrectness: 'No world fact can be checked for this claim.',
+  accountFactuality: 'No tool call can be checked for this claim.',
+};
+
+/** Final justification written when the section cannot be confidently assessed. */
+export const FINAL_CANNOT_ASSESS_JUSTIFICATIONS: Record<FactualitySectionKind, string> = {
+  worldFactCorrectness: 'No world fact to check here.',
+  accountFactuality: 'No tool call to check here.',
+};
+
 export interface ClaimSource {
   text: string;
 }
@@ -80,6 +109,28 @@ export function createEmptyClaimSource(): ClaimSource {
 
 export function factualityRatingLabel(rating: FactualityRating | ''): string {
   return ratingOptionLabel(FACTUALITY_RATINGS, rating);
+}
+
+/**
+ * Justification to write when a claim's accuracy is picked, or `null` when the
+ * existing text should be left alone.
+ */
+export function claimJustificationForAccuracy(
+  accuracy: ClaimAccuracy,
+  section: FactualitySectionKind,
+): string | null {
+  return accuracy === CANNOT_ASSESS_ACCURACY ? CLAIM_CANNOT_ASSESS_JUSTIFICATIONS[section] : null;
+}
+
+/**
+ * Final justification to write when the section rating is picked, or `null`
+ * when the existing text should be left alone.
+ */
+export function finalJustificationForRating(
+  rating: FactualityRating | '',
+  section: FactualitySectionKind,
+): string | null {
+  return rating === '1/5' ? FINAL_CANNOT_ASSESS_JUSTIFICATIONS[section] : null;
 }
 
 function normalizeSingleLine(text: string): string {

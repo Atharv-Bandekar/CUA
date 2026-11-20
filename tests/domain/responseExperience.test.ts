@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RESPONSE_EXPERIENCE_CANNOT_IMPROVE_JUSTIFICATION,
   RESPONSE_EXPERIENCE_OPTIONS,
   RESPONSE_EXPERIENCE_RATINGS,
   formatResponseExperience,
+  responseExperienceJustificationForRating,
   responseExperienceRatingLabel,
 } from '../../src/domain/responseExperience';
 import type { ResponseExperienceState } from '../../src/domain/responseExperience';
@@ -35,6 +37,22 @@ describe('response experience rating options', () => {
   it('renders an explicit fallback for an unselected rating', () => {
     expect(responseExperienceRatingLabel('')).toBe('[Not Rated]');
     expect(responseExperienceRatingLabel('2/5')).toBe('Pretty Bad');
+  });
+});
+
+describe('cannot-be-improved justification', () => {
+  it('seeds the predefined justification for a perfect score', () => {
+    expect(RESPONSE_EXPERIENCE_CANNOT_IMPROVE_JUSTIFICATION).toBe(
+      'I have rated the response as Cannot be improved as the agent has used concise language by conveying about [placeholder] without unnecessary details. It has no redundant content in its response & The language used is natural as there is use of the pronoun "I". The content is well-formatted using bullet points.',
+    );
+    expect(responseExperienceJustificationForRating('5/5')).toBe(
+      RESPONSE_EXPERIENCE_CANNOT_IMPROVE_JUSTIFICATION,
+    );
+  });
+
+  it('leaves the existing justification alone for every other rating', () => {
+    expect(responseExperienceJustificationForRating('4/5')).toBeNull();
+    expect(responseExperienceJustificationForRating('')).toBeNull();
   });
 });
 

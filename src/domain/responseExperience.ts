@@ -26,6 +26,13 @@ const RESPONSE_EXPERIENCE_ORDER: readonly ResponseExperienceRating[] = [
 export const RESPONSE_EXPERIENCE_OPTIONS: readonly RatingOption<ResponseExperienceRating>[] =
   ratingOptions(RESPONSE_EXPERIENCE_RATINGS, RESPONSE_EXPERIENCE_ORDER);
 
+/**
+ * Justification seeded when the response is rated Cannot be improved. The
+ * `[placeholder]` is left for the reviewer to replace with the subject.
+ */
+export const RESPONSE_EXPERIENCE_CANNOT_IMPROVE_JUSTIFICATION =
+  'I have rated the response as Cannot be improved as the agent has used concise language by conveying about [placeholder] without unnecessary details. It has no redundant content in its response & The language used is natural as there is use of the pronoun "I". The content is well-formatted using bullet points.';
+
 export interface ResponseExperiencePoint {
   text: string;
 }
@@ -39,6 +46,16 @@ export interface ResponseExperienceState {
 
 export function responseExperienceRatingLabel(rating: ResponseExperienceRating | ''): string {
   return ratingOptionLabel(RESPONSE_EXPERIENCE_RATINGS, rating);
+}
+
+/**
+ * Justification to write when a rating is picked, or `null` when the existing
+ * text should be left alone.
+ */
+export function responseExperienceJustificationForRating(
+  rating: ResponseExperienceRating | '',
+): string | null {
+  return rating === '5/5' ? RESPONSE_EXPERIENCE_CANNOT_IMPROVE_JUSTIFICATION : null;
 }
 
 function bullet(point: ResponseExperiencePoint): string {

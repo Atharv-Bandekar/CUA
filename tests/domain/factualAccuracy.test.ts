@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   CLAIM_ACCURACIES,
+  CLAIM_CANNOT_ASSESS_JUSTIFICATIONS,
+  CLAIM_JUSTIFICATION_PRESETS,
   FACTUALITY_OPTIONS,
   FACTUALITY_RATINGS,
+  FINAL_CANNOT_ASSESS_JUSTIFICATIONS,
+  claimJustificationForAccuracy,
   factualityRatingLabel,
+  finalJustificationForRating,
   formatJustificationBuilder,
   formatObjectiveClaimsList,
 } from '../../src/domain/factualAccuracy';
@@ -139,6 +144,54 @@ describe('formatJustificationBuilder', () => {
 
     expect(output).not.toContain('Source 1:');
     expect(output).toContain('Final Rating: Completely Accurate');
+  });
+});
+
+describe('predefined claim justifications', () => {
+  it('lists the five openers in the specified order', () => {
+    expect(CLAIM_JUSTIFICATION_PRESETS).toEqual([
+      "Agent's log confirms it.",
+      "Agent's log and a screenshot in it confirm it.",
+      "Agent's logs and screenshots in them confirm it.",
+      "Agent's log and the content in it confirm it.",
+      "Agent's logs and the content in them confirm it.",
+    ]);
+  });
+
+  it('seeds the section-specific justification when nothing can be assessed', () => {
+    expect(claimJustificationForAccuracy("Can't confidently assess", 'worldFactCorrectness')).toBe(
+      'No world fact can be checked for this claim.',
+    );
+    expect(claimJustificationForAccuracy("Can't confidently assess", 'accountFactuality')).toBe(
+      'No tool call can be checked for this claim.',
+    );
+  });
+
+  it('leaves the existing justification alone for every other accuracy', () => {
+    expect(claimJustificationForAccuracy('Accurate', 'worldFactCorrectness')).toBeNull();
+    expect(claimJustificationForAccuracy('', 'accountFactuality')).toBeNull();
+  });
+});
+
+describe('cannot-assess final justification', () => {
+  it('seeds a section-specific final justification for 1/5', () => {
+    expect(finalJustificationForRating('1/5', 'worldFactCorrectness')).toBe(
+      'No world fact to check here.',
+    );
+    expect(finalJustificationForRating('1/5', 'accountFactuality')).toBe(
+      'No tool call to check here.',
+    );
+    expect(FINAL_CANNOT_ASSESS_JUSTIFICATIONS.worldFactCorrectness).toBe(
+      'No world fact to check here.',
+    );
+    expect(CLAIM_CANNOT_ASSESS_JUSTIFICATIONS.accountFactuality).toBe(
+      'No tool call can be checked for this claim.',
+    );
+  });
+
+  it('leaves the existing final justification alone for every other rating', () => {
+    expect(finalJustificationForRating('5/5', 'worldFactCorrectness')).toBeNull();
+    expect(finalJustificationForRating('', 'accountFactuality')).toBeNull();
   });
 });
 

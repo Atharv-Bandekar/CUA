@@ -88,6 +88,73 @@ describe('factuality justification builder', () => {
     ).toBe('true');
   });
 
+  it('fills a claim justification from the Predefined dropdown', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await openSection(user, 'Account Factuality');
+    await user.click(screen.getAllByRole('button', { name: 'Add Claim' })[0]!);
+
+    const select = screen.getByLabelText('Claim 1 predefined justification') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    expect(select.options[0]?.textContent).toBe('Predefined');
+    expect(Array.from(select.options).map((option) => option.value)).toEqual([
+      '',
+      "Agent's log confirms it.",
+      "Agent's log and a screenshot in it confirm it.",
+      "Agent's logs and screenshots in them confirm it.",
+      "Agent's log and the content in it confirm it.",
+      "Agent's logs and the content in them confirm it.",
+    ]);
+
+    await user.selectOptions(select, "Agent's logs and screenshots in them confirm it.");
+
+    expect(
+      (screen.getByLabelText('Claim 1 justification') as HTMLTextAreaElement).value,
+    ).toBe("Agent's logs and screenshots in them confirm it.");
+    expect(screen.getByTestId('factuality-output').textContent).toContain(
+      "Justification: Agent's logs and screenshots in them confirm it.",
+    );
+    expect((select as HTMLSelectElement).value).toBe('');
+  });
+
+  it('seeds the cannot-assess justifications for each section', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await openSection(user, 'World Fact Correctness');
+    await user.click(screen.getAllByRole('button', { name: 'Add Claim' })[0]!);
+    await user.click(
+      within(screen.getByRole('group', { name: 'Claim 1 accuracy' })).getByRole('button', {
+        name: "Can't confidently assess",
+      }),
+    );
+    expect(
+      (screen.getByLabelText('Claim 1 justification') as HTMLTextAreaElement).value,
+    ).toBe('No world fact can be checked for this claim.');
+
+    await user.click(screen.getByRole('radio', { name: '1/5 Cannot Confidently Assess' }));
+    expect((screen.getByLabelText('Final Justification') as HTMLTextAreaElement).value).toBe(
+      'No world fact to check here.',
+    );
+
+    await openSection(user, 'Account Factuality');
+    await user.click(screen.getAllByRole('button', { name: 'Add Claim' })[0]!);
+    await user.click(
+      within(screen.getByRole('group', { name: 'Claim 1 accuracy' })).getByRole('button', {
+        name: "Can't confidently assess",
+      }),
+    );
+    expect(
+      (screen.getByLabelText('Claim 1 justification') as HTMLTextAreaElement).value,
+    ).toBe('No tool call can be checked for this claim.');
+
+    await user.click(screen.getByRole('radio', { name: '1/5 Cannot Confidently Assess' }));
+    expect((screen.getByLabelText('Final Justification') as HTMLTextAreaElement).value).toBe(
+      'No tool call to check here.',
+    );
+  });
+
   it('flags an empty final justification as required until it is written', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -135,6 +202,11 @@ describe('response experience', () => {
     expect(screen.queryByRole('button', { name: 'Add Expected' })).toBeNull();
     expect(screen.getByLabelText('Justification')).not.toBeNull();
 
+    expect((screen.getByLabelText('Justification') as HTMLTextAreaElement).value).toBe(
+      'I have rated the response as Cannot be improved as the agent has used concise language by conveying about [placeholder] without unnecessary details. It has no redundant content in its response & The language used is natural as there is use of the pronoun "I". The content is well-formatted using bullet points.',
+    );
+
+    await user.clear(screen.getByLabelText('Justification'));
     await user.type(screen.getByLabelText('Justification'), 'Nothing to add.');
     expect(screen.getByTestId('response-experience-output').textContent).toBe(
       ['Rating: Cannot be improved', 'Justification: Nothing to add.'].join('\n'),

@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react';
 import {
   RESPONSE_EXPERIENCE_OPTIONS,
   formatResponseExperience,
+  responseExperienceJustificationForRating,
   type ResponseExperiencePoint,
   type ResponseExperienceState,
 } from '../../domain/responseExperience';
@@ -93,7 +94,11 @@ export function ResponseExperienceView() {
           label="Response experience rating"
           options={RESPONSE_EXPERIENCE_OPTIONS}
           value={responseExperience.rating}
-          onChange={(rating) => update({ rating })}
+          onChange={(rating) => {
+            const seeded = responseExperienceJustificationForRating(rating);
+
+            update(seeded === null ? { rating } : { rating, justification: seeded });
+          }}
         />
 
         {perfect ? (

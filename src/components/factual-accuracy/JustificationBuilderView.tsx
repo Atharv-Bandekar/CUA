@@ -2,9 +2,12 @@ import { Plus } from 'lucide-react';
 import {
   CLAIM_ACCURACIES,
   CLAIM_CLASSIFICATIONS,
+  CLAIM_JUSTIFICATION_PRESETS,
   FACTUALITY_OPTIONS,
+  claimJustificationForAccuracy,
   createEmptyClaim,
   createEmptyClaimSource,
+  finalJustificationForRating,
   formatJustificationBuilder,
   formatObjectiveClaimsList,
   type Claim,
@@ -160,7 +163,16 @@ export function JustificationBuilderView({
                           key={accuracy}
                           type="button"
                           aria-pressed={claim.accuracy === accuracy}
-                          onClick={() => updateClaim(index, { accuracy })}
+                          onClick={() => {
+                            const seeded = claimJustificationForAccuracy(accuracy, section);
+
+                            updateClaim(
+                              index,
+                              seeded === null
+                                ? { accuracy }
+                                : { accuracy, justification: seeded },
+                            );
+                          }}
                           className={pillClass(claim.accuracy === accuracy)}
                         >
                           {accuracy}
@@ -190,14 +202,38 @@ export function JustificationBuilderView({
                     </div>
                   </div>
 
-                  <textarea
-                    className="field-input resize-y"
-                    rows={2}
-                    aria-label={`Claim ${index + 1} justification`}
-                    placeholder="Why does this claim earn its accuracy?"
-                    value={claim.justification}
-                    onChange={(event) => updateClaim(index, { justification: event.target.value })}
-                  />
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="field-label">Justification</span>
+                      <select
+                        className="predefined-select"
+                        aria-label={`Claim ${index + 1} predefined justification`}
+                        value=""
+                        onChange={(event) => {
+                          if (event.target.value !== '') {
+                            updateClaim(index, { justification: event.target.value });
+                          }
+                        }}
+                      >
+                        <option value="">Predefined</option>
+                        {CLAIM_JUSTIFICATION_PRESETS.map((preset) => (
+                          <option key={preset} value={preset}>
+                            {preset}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <textarea
+                      className="field-input resize-y"
+                      rows={2}
+                      aria-label={`Claim ${index + 1} justification`}
+                      placeholder="Why does this claim earn its accuracy?"
+                      value={claim.justification}
+                      onChange={(event) =>
+                        updateClaim(index, { justification: event.target.value })
+                      }
+                    />
+                  </div>
 
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -251,7 +287,13 @@ export function JustificationBuilderView({
           label="Final rating"
           options={FACTUALITY_OPTIONS}
           value={factuality.finalRating}
-          onChange={(finalRating) => update({ finalRating })}
+          onChange={(finalRating) => {
+            const seeded = finalJustificationForRating(finalRating, section);
+
+            update(
+              seeded === null ? { finalRating } : { finalRating, finalJustification: seeded },
+            );
+          }}
         />
 
         <div className="min-w-0 space-y-1.5">
