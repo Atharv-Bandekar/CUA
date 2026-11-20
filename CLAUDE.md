@@ -82,6 +82,13 @@ Rules:
   Examples: `feat(state): add 5s undo window to clearAll`,
   `test(domain): cover rating clamp boundaries`.
 - Keep commits focused; never mix a refactor with behaviour changes.
+- **No AI attribution.** Commit messages, pull request bodies and files end on
+  their own last line. Never add `Co-Authored-By` trailers, `Generated with …`
+  lines or any agent name. The only author is the repository owner.
+- Pull requests are opened and updated with the GitHub CLI (`gh`), not by hand:
+  `gh pr create`, `gh pr view`, `gh pr checks`. If `gh` is not on `PATH`, stop
+  and install it (`winget install --id GitHub.cli --exact`) rather than asking a
+  human to open the compare page.
 - Generate `PR_SUMMARY.md` at the end of each sprint before opening the pull
   request. Delete or reset it on the next sprint so it always describes the
   current branch. Template:
@@ -111,3 +118,4 @@ Rules:
 - [ ] Layer boundaries respected (`src/domain/` free of React/DOM)
 - [ ] Shared components reused: `RemovableFieldRow`, `JustificationBuilderView`
 - [ ] On a `feat/<name>` branch, Conventional Commit, `PR_SUMMARY.md` generated
+- [ ] Commit message has no `Co-Authored-By` trailer or agent attribution
