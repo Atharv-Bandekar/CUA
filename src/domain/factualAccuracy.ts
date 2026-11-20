@@ -24,12 +24,27 @@ export const FACTUALITY_OPTIONS: readonly RatingOption<FactualityRating>[] = rat
 
 export type ClaimClassification = 'Objective' | 'Subjective' | '';
 
+export const CLAIM_CLASSIFICATIONS: readonly Exclude<ClaimClassification, ''>[] = [
+  'Objective',
+  'Subjective',
+];
+
 export type ClaimAccuracy =
-  | 'Accurate'
   | 'Inaccurate'
-  | 'Partially Accurate'
-  | 'Cannot Confidently Assess'
+  | 'Unsupported'
+  | 'Disputed'
+  | 'Accurate'
+  | "Can't confidently assess"
   | '';
+
+/** Accuracy choices in rising order, from least to most supportable. */
+export const CLAIM_ACCURACIES: readonly Exclude<ClaimAccuracy, ''>[] = [
+  'Inaccurate',
+  'Unsupported',
+  'Disputed',
+  'Accurate',
+  "Can't confidently assess",
+];
 
 export interface ClaimSource {
   text: string;
@@ -49,6 +64,20 @@ export interface FactualAccuracyState {
   finalJustification: string;
 }
 
+export function createEmptyClaim(): Claim {
+  return {
+    text: '',
+    classification: '',
+    accuracy: '',
+    justification: '',
+    sources: [],
+  };
+}
+
+export function createEmptyClaimSource(): ClaimSource {
+  return { text: '' };
+}
+
 export function factualityRatingLabel(rating: FactualityRating | ''): string {
   return ratingOptionLabel(FACTUALITY_RATINGS, rating);
 }
@@ -58,11 +87,7 @@ function normalizeSingleLine(text: string): string {
 }
 
 function classificationLine(claim: Claim): string {
-  if (claim.classification === '' && claim.accuracy === '') {
-    return '';
-  }
-
-  return `${claim.classification} - ${claim.accuracy}`;
+  return [claim.classification, claim.accuracy].filter((part) => part !== '').join(' - ');
 }
 
 /**

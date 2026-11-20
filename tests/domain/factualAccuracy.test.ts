@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CLAIM_ACCURACIES,
   FACTUALITY_OPTIONS,
   FACTUALITY_RATINGS,
   factualityRatingLabel,
@@ -28,6 +29,18 @@ const state: FactualAccuracyState = {
   finalRating: '4/5',
   finalJustification: 'One claim was off.',
 };
+
+describe('claim accuracy options', () => {
+  it('exposes the five accuracy choices in rising order', () => {
+    expect(CLAIM_ACCURACIES).toEqual([
+      'Inaccurate',
+      'Unsupported',
+      'Disputed',
+      'Accurate',
+      "Can't confidently assess",
+    ]);
+  });
+});
 
 describe('factuality rating options', () => {
   it('maps every scale position to its output text', () => {

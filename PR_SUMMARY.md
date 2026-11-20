@@ -1,26 +1,49 @@
-# PR Summary — feat/shell-and-task-completion
+# PR Summary — feat/remaining-views-and-summary
 
 ## What changed
-
-- Added the global evaluation store in `src/state/useEvaluationStore.ts`: one persisted state for all four scored sections, `localStorage` key `ba.evaluation.v1`, defensive parsing, `clearAll()` with a 5-second undo window, `undoClear()`, and a `useEvaluationStore()` / `useUndoState()` React bridge. Verified end-to-end in the new integration tests.
-- Added the responsive shell in `src/components/layout/`: `AppShell` + `AppShellFrame`, a desktop `Sidebar` with the five sections in order, a horizontal `MobileNav` for 400px split-screen windows, a persistent `TopBar` showing the active section title and `Clear All`, and a non-blocking `UndoToast`.
-- Added the Task Completion view in `src/components/task-completion/`: Main Goal input with Yes/No/Partial pills and a `+ Add Condition` button beside it, dynamic condition rows using the shared `RemovableFieldRow` with right-aligned `×`, a five-node horizontal Final Rating track, a rating-aware justification starter pill, and a live output preview with `Copy Task Completion` via the clipboard adapter.
-- Replaced the root `App.tsx` with the new shell; Task Completion is the default view and the other four tabs show a sprint placeholder.
-- Reused the existing `src/adapters/clipboard.ts` and `src/components/RemovableFieldRow.tsx` rather than duplicating them.
-- Added `tests/integration/taskCompletion.test.tsx` (jsdom + Testing Library) covering condition add/delete re-indexing and Clear All / Undo restoration.
+- `src/domain/factualAccuracy.ts` — replaced the placeholder claim accuracy scale with the
+  five-node scale (`Inaccurate`, `Unsupported`, `Disputed`, `Accurate`, `Can't confidently assess`),
+  exported `CLAIM_ACCURACIES`, `CLAIM_CLASSIFICATIONS`, `createEmptyClaim()` and
+  `createEmptyClaimSource()`, and made the classification/accuracy line tolerate partial input.
+- `src/state/useEvaluationStore.ts` — persisted-claim validation now reuses the domain option
+  lists instead of local duplicates, so stored accuracy values can never drift from the UI.
+- `src/components/factual-accuracy/JustificationBuilderView.tsx` — one parameterised builder
+  mounted for both `worldFactCorrectness` and `accountFactuality`: empty-state `+ Add Claim`
+  (top and bottom), numbered claim cards with a right-aligned `×`, per-claim accuracy and
+  classification pills, justification, `+ Add Source` rows, the five-node final rating track and
+  a required Final Justification with a warning border until written. Emits the formatted
+  justification and the objective-claims bullet list.
+- `src/components/response-experience/ResponseExperienceView.tsx` — five-node rating track;
+  a perfect 5/5 asks for a justification, every other rating shows Expected and Actual
+  `RemovableFieldRow` lists with `+ Add`, plus one copyable preview.
+- `src/components/final-summary/FinalSummaryView.tsx` — A/B nudge toggle (defaults to A), live
+  score rows compiled from the other four tabs with missing ratings highlighted, and the
+  copyable `Response X Scores:` block.
+- `src/components/ScaleTrack.tsx`, `src/components/CopyButton.tsx` — shared rating track and
+  clipboard action with idle/copied/failed feedback, reused by both new views.
+- `src/App.tsx` — replaces the placeholder branch with the four real section views.
 
 ## Why
-
-This sprint establishes the app shell and the first complete evaluation section, with the store and undo behaviour that the remaining sections will reuse.
+- Sprint goal: the worksheet was usable only for Task Completion; the remaining four tabs still
+  rendered a placeholder.
+- One builder component bound to either factuality slice keeps the two sections independent in
+  state while sharing every line of claim/source/output UI.
+- `ClaimAccuracy` previously offered invented options (`Partially Accurate`,
+  `Cannot Confidently Assess`) in the wrong order; it now matches the specified five-node scale.
 
 ## Tests
-
-- `npm test` — 75 passing (8 files), including 4 new integration tests
-- `npm run build` — `tsc --noEmit` + Vite build passing
+- `npm test` — 82 passing (10 files), including new jsdom integration coverage for factuality
+  section independence, the mandatory Final Justification state, live Final Summary score syncing
+  across tabs, and the Response Experience 5/5 branch.
+- `npm run build` — passing (`tsc --noEmit` + Vite build).
+- Domain purity check: `rg "react|window|document|navigator|localStorage|setTimeout|fetch" src/domain` — no matches.
 
 ## Review notes / risks
-
-- `useEvaluationStore.ts` imports React because it exposes hooks, as this sprint's file name requires; the rest of the persistence and undo logic stays framework-agnostic and is exercised through the singleton in tests.
-- Quick pills map to the five-point scale (`Yes` → 5/5, `Partial` → 3/5, `No` → 1/5), so the preview prints the domain's output labels.
-- Condition rows are index-keyed because the domain model has no id field; removal renumbers from the array index.
-- The other four section views are placeholders until their sprints.
+- Claim accuracy and classification are `aria-pressed` pill groups rather than radios; the final
+  section rating is a real radio group.
+- The Final Summary A/B choice is view state only and resets to A when the tab unmounts; it is
+  not persisted.
+- The unused legacy scaffold components (`RatingSelector`, the old `JustificationBuilderView` in
+  `src/components/`, `TaskCompletionSection`, `ResponseExperienceSection`, `appStore`) remain in
+  place and unused, as in the previous sprint.
+- The A/B toggle is labelled "Nudge response" with buttons "Response A" / "Response B".

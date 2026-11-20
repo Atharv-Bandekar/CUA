@@ -4,10 +4,10 @@
  */
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import {
+  CLAIM_ACCURACIES,
+  CLAIM_CLASSIFICATIONS,
   FACTUALITY_OPTIONS,
   type Claim,
-  type ClaimAccuracy,
-  type ClaimClassification,
   type ClaimSource,
   type FactualAccuracyState,
   type FactualityRating,
@@ -108,14 +108,6 @@ const FACTUALITY_VALUES: readonly FactualityRating[] = FACTUALITY_OPTIONS.map(
 const RESPONSE_EXPERIENCE_VALUES: readonly ResponseExperienceRating[] =
   RESPONSE_EXPERIENCE_OPTIONS.map((option) => option.value);
 
-const CLASSIFICATIONS: readonly ClaimClassification[] = ['Objective', 'Subjective'];
-const ACCURACIES: readonly ClaimAccuracy[] = [
-  'Accurate',
-  'Inaccurate',
-  'Partially Accurate',
-  'Cannot Confidently Assess',
-];
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -151,10 +143,10 @@ function readClaims(value: unknown): Claim[] {
     return [
       {
         text: readString(entry.text),
-        classification: isOneOf(entry.classification, CLASSIFICATIONS)
+        classification: isOneOf(entry.classification, CLAIM_CLASSIFICATIONS)
           ? entry.classification
           : '',
-        accuracy: isOneOf(entry.accuracy, ACCURACIES) ? entry.accuracy : '',
+        accuracy: isOneOf(entry.accuracy, CLAIM_ACCURACIES) ? entry.accuracy : '',
         justification: readString(entry.justification),
         sources: readSources(entry.sources),
       },
