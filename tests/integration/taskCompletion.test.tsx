@@ -72,6 +72,36 @@ describe('Task Completion conditions', () => {
   });
 });
 
+describe('Task Completion status pills', () => {
+  it('prints Yes and No for the goal and condition pills', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.type(screen.getByLabelText('Main Goal'), 'Close all Q3 tickets');
+    await user.click(screen.getByRole('button', { name: '+ Add Condition' }));
+    await user.type(screen.getByLabelText('Condition 1 text'), 'Check revenue');
+
+    const goalStatus = screen.getByRole('group', { name: 'Main goal status' });
+    const conditionStatus = screen.getByRole('group', { name: 'Condition 1 status' });
+
+    await user.click(within(goalStatus).getByRole('button', { name: 'Yes' }));
+    await user.click(within(conditionStatus).getByRole('button', { name: 'No' }));
+
+    const output = screen.getByTestId('task-completion-output').textContent ?? '';
+    expect(output).toContain('Main Goal fulfilled? (Close all Q3 tickets): Yes');
+    expect(output).toContain('Condition 1 (Check revenue): No');
+    expect(output).not.toContain('Fully Complete');
+    expect(output).not.toContain('Not at all Complete');
+
+    await user.click(within(goalStatus).getByRole('button', { name: 'No' }));
+    await user.click(within(conditionStatus).getByRole('button', { name: 'Yes' }));
+
+    const updated = screen.getByTestId('task-completion-output').textContent ?? '';
+    expect(updated).toContain('Main Goal fulfilled? (Close all Q3 tickets): No');
+    expect(updated).toContain('Condition 1 (Check revenue): Yes');
+  });
+});
+
 describe('Clear All', () => {
   it('resets every section and restores it through the Undo toast', async () => {
     const user = userEvent.setup();
@@ -87,15 +117,15 @@ describe('Clear All', () => {
     await user.type(screen.getByLabelText('Condition 1 text'), 'Check revenue');
     await user.click(
       within(screen.getByRole('group', { name: 'Condition 1 status' })).getByRole('button', {
-        name: 'Partial',
+        name: 'No',
       }),
     );
     await user.click(screen.getByRole('radio', { name: '5/5 Fully Complete' }));
     await user.type(screen.getByLabelText('Justification'), 'All conditions met.');
 
     const output = screen.getByTestId('task-completion-output').textContent ?? '';
-    expect(output).toContain('Main Goal fulfilled? (Close all Q3 tickets): Fully Complete');
-    expect(output).toContain('Condition 1 (Check revenue): Partially Complete');
+    expect(output).toContain('Main Goal fulfilled? (Close all Q3 tickets): Yes');
+    expect(output).toContain('Condition 1 (Check revenue): No');
 
     await user.click(screen.getByRole('button', { name: 'Clear All' }));
 
@@ -112,6 +142,9 @@ describe('Clear All', () => {
     expect(screen.queryByText('Worksheet cleared.')).toBeNull();
     expect(screen.getByTestId('task-completion-output').textContent).toContain(
       'Final Rating: Fully Complete',
+    );
+    expect(screen.getByTestId('task-completion-output').textContent).toContain(
+      'Main Goal fulfilled? (Close all Q3 tickets): Yes',
     );
   });
 

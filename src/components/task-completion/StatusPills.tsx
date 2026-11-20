@@ -1,10 +1,4 @@
-import type { TaskCompletionRating } from '../../domain/taskCompletion';
-
-const STATUS_PILLS: readonly { label: string; value: TaskCompletionRating }[] = [
-  { label: 'Yes', value: '5/5' },
-  { label: 'No', value: '1/5' },
-  { label: 'Partial', value: '3/5' },
-];
+import { TASK_COMPLETION_STATUSES, type TaskCompletionRating } from '../../domain/taskCompletion';
 
 export interface StatusPillsProps {
   label: string;
@@ -15,7 +9,7 @@ export interface StatusPillsProps {
 export function StatusPills({ label, value, onChange }: StatusPillsProps) {
   return (
     <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={label}>
-      {STATUS_PILLS.map((pill) => {
+      {TASK_COMPLETION_STATUSES.map((pill) => {
         const selected = value === pill.value;
 
         return (

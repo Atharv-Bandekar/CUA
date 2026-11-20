@@ -22,6 +22,23 @@ export const TASK_COMPLETION_OPTIONS: readonly RatingOption<TaskCompletionRating
   TASK_COMPLETION_ORDER,
 );
 
+/**
+ * Stored value → output text for the Yes / No goal and condition pills. The
+ * full scale is mapped so persisted legacy values stay printable.
+ */
+export const TASK_COMPLETION_STATUS_RATINGS: Record<TaskCompletionRating, string> = {
+  '5/5': 'Yes',
+  '4/5': 'Yes',
+  '3/5': 'Partial',
+  '2/5': 'No',
+  '1/5': 'No',
+};
+
+const TASK_COMPLETION_STATUS_ORDER: readonly TaskCompletionRating[] = ['5/5', '1/5'];
+
+export const TASK_COMPLETION_STATUSES: readonly RatingOption<TaskCompletionRating>[] =
+  ratingOptions(TASK_COMPLETION_STATUS_RATINGS, TASK_COMPLETION_STATUS_ORDER);
+
 export interface TaskCompletionCondition {
   text: string;
   status: TaskCompletionRating | '';
@@ -39,16 +56,23 @@ export function taskCompletionRatingLabel(rating: TaskCompletionRating | ''): st
   return ratingOptionLabel(TASK_COMPLETION_RATINGS, rating);
 }
 
+/** Yes / No text for the main goal and condition statuses. */
+export function taskCompletionStatusLabel(status: TaskCompletionRating | ''): string {
+  return ratingOptionLabel(TASK_COMPLETION_STATUS_RATINGS, status);
+}
+
 /**
  * Compiles the task completion block. Conditions are numbered from their array
- * index (`index + 1`), so inserting or removing a row renumbers the rest.
+ * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
+ * and condition statuses print as Yes / No, while the final rating prints its
+ * scale label.
  */
 export function formatTaskCompletion(state: TaskCompletionState): string {
   const blocks: string[] = [
-    `Main Goal fulfilled? (${state.mainGoal}): ${taskCompletionRatingLabel(state.mainGoalStatus)}`,
+    `Main Goal fulfilled? (${state.mainGoal}): ${taskCompletionStatusLabel(state.mainGoalStatus)}`,
     ...state.conditions.map(
       (condition, index) =>
-        `Condition ${index + 1} (${condition.text}): ${taskCompletionRatingLabel(condition.status)}`,
+        `Condition ${index + 1} (${condition.text}): ${taskCompletionStatusLabel(condition.status)}`,
     ),
     [
       `Final Rating: ${taskCompletionRatingLabel(state.finalRating)}`,

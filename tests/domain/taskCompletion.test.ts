@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   TASK_COMPLETION_OPTIONS,
   TASK_COMPLETION_RATINGS,
+  TASK_COMPLETION_STATUSES,
+  TASK_COMPLETION_STATUS_RATINGS,
   formatTaskCompletion,
   taskCompletionRatingLabel,
+  taskCompletionStatusLabel,
 } from '../../src/domain/taskCompletion';
 import type { TaskCompletionState } from '../../src/domain/taskCompletion';
 
@@ -11,8 +14,8 @@ const state: TaskCompletionState = {
   mainGoal: 'Close all Q3 tickets',
   mainGoalStatus: '5/5',
   conditions: [
-    { text: 'Check revenue figures', status: '4/5' },
-    { text: 'Review churn notes', status: '3/5' },
+    { text: 'Check revenue figures', status: '5/5' },
+    { text: 'Review churn notes', status: '1/5' },
   ],
   finalRating: '5/5',
   justification: 'All tickets closed and verified.',
@@ -43,17 +46,37 @@ describe('task completion rating options', () => {
     expect(taskCompletionRatingLabel('')).toBe('[Not Rated]');
     expect(taskCompletionRatingLabel('2/5')).toBe('Minimally Complete');
   });
+
+  it('maps the goal and condition statuses to Yes / No text', () => {
+    expect(TASK_COMPLETION_STATUS_RATINGS).toEqual({
+      '5/5': 'Yes',
+      '4/5': 'Yes',
+      '3/5': 'Partial',
+      '2/5': 'No',
+      '1/5': 'No',
+    });
+    expect(TASK_COMPLETION_STATUSES).toEqual([
+      { value: '5/5', label: 'Yes' },
+      { value: '1/5', label: 'No' },
+    ]);
+  });
+
+  it('labels statuses with Yes / No instead of the completion scale', () => {
+    expect(taskCompletionStatusLabel('5/5')).toBe('Yes');
+    expect(taskCompletionStatusLabel('1/5')).toBe('No');
+    expect(taskCompletionStatusLabel('')).toBe('[Not Rated]');
+  });
 });
 
 describe('formatTaskCompletion', () => {
   it('compiles the main goal, numbered conditions, rating and justification', () => {
     expect(formatTaskCompletion(state)).toBe(
       [
-        'Main Goal fulfilled? (Close all Q3 tickets): Fully Complete',
+        'Main Goal fulfilled? (Close all Q3 tickets): Yes',
         '',
-        'Condition 1 (Check revenue figures): Mostly Complete',
+        'Condition 1 (Check revenue figures): Yes',
         '',
-        'Condition 2 (Review churn notes): Partially Complete',
+        'Condition 2 (Review churn notes): No',
         '',
         'Final Rating: Fully Complete',
         'Justification: All tickets closed and verified.',
@@ -66,13 +89,14 @@ describe('formatTaskCompletion', () => {
       ...state,
       conditions: [
         { text: 'First', status: '5/5' },
-        { text: 'Second', status: '4/5' },
-        { text: 'Third', status: '2/5' },
+        { text: 'Second', status: '1/5' },
+        { text: 'Third', status: '5/5' },
       ],
     });
 
-    expect(output).toContain('Condition 1 (First): Fully Complete');
-    expect(output).toContain('Condition 3 (Third): Minimally Complete');
+    expect(output).toContain('Condition 1 (First): Yes');
+    expect(output).toContain('Condition 2 (Second): No');
+    expect(output).toContain('Condition 3 (Third): Yes');
     expect(output).not.toContain('Condition 4');
   });
 
