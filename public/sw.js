@@ -4,7 +4,7 @@
  * cached shell; hashed build assets are cache-first because their URLs change
  * on every build. Kept as plain JS so it is served as-is, not bundled.
  */
-const CACHE = 'ba-review-v2';
+const CACHE = 'cua-evaluation-v3';
 const APP_SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png'];
 
 self.addEventListener('install', (event) => {

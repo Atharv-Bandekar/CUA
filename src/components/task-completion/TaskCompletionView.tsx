@@ -7,6 +7,7 @@ import {
 import { evaluationStore, useEvaluationStore } from '../../state/useEvaluationStore';
 import { RemovableFieldRow } from '../RemovableFieldRow';
 import { FinalRatingTrack } from './FinalRatingTrack';
+import { InfrastructureIssuesSection } from './InfrastructureIssuesSection';
 import { StatusPills } from './StatusPills';
 import { TaskCompletionPreview } from './TaskCompletionPreview';
 
@@ -132,6 +133,11 @@ export function TaskCompletionView() {
           </ul>
         )}
       </section>
+
+      <InfrastructureIssuesSection
+        issues={taskCompletion.infrastructureIssues}
+        separateList={taskCompletion.separateInfrastructureList}
+      />
 
       <section className="card min-w-0 space-y-3 p-4">
         <h2 className="field-label">Final Rating</h2>

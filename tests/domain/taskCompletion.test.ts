@@ -4,11 +4,12 @@ import {
   TASK_COMPLETION_RATINGS,
   TASK_COMPLETION_STATUSES,
   TASK_COMPLETION_STATUS_RATINGS,
+  formatInfrastructureIssue,
   formatTaskCompletion,
   taskCompletionRatingLabel,
   taskCompletionStatusLabel,
 } from '../../src/domain/taskCompletion';
-import type { TaskCompletionState } from '../../src/domain/taskCompletion';
+import type { InfrastructureIssue, TaskCompletionState } from '../../src/domain/taskCompletion';
 
 const state: TaskCompletionState = {
   mainGoal: 'Close all Q3 tickets',
@@ -19,7 +20,14 @@ const state: TaskCompletionState = {
   ],
   finalRating: '5/5',
   justification: 'All tickets closed and verified.',
+  separateInfrastructureList: false,
+  infrastructureIssues: [],
 };
+
+const infrastructureIssues: InfrastructureIssue[] = [
+  { action: 'open the CRM ticket', failure: 'the tool returned a 403' },
+  { action: 'read the attached spreadsheet', failure: 'the file did not load' },
+];
 
 describe('task completion rating options', () => {
   it('maps every scale position to its output text', () => {
@@ -112,6 +120,8 @@ describe('formatTaskCompletion', () => {
       conditions: [{ text: 'Gather inputs', status: '' }],
       finalRating: '',
       justification: '',
+      separateInfrastructureList: false,
+      infrastructureIssues: [],
     });
 
     expect(output).toBe(
@@ -124,5 +134,84 @@ describe('formatTaskCompletion', () => {
         'Justification: ',
       ].join('\n'),
     );
+  });
+});
+
+describe('infrastructure issues', () => {
+  it('formats one issue as "Agent tries to … but …"', () => {
+    expect(formatInfrastructureIssue(infrastructureIssues[0])).toBe(
+      'Agent tries to open the CRM ticket but the tool returned a 403',
+    );
+  });
+
+  it('collapses blank slots instead of printing doubled spaces', () => {
+    expect(formatInfrastructureIssue({ action: 'open the CRM ticket', failure: '  ' })).toBe(
+      'Agent tries to open the CRM ticket but',
+    );
+    expect(formatInfrastructureIssue({ action: '', failure: 'the file did not load' })).toBe(
+      'Agent tries to but the file did not load',
+    );
+  });
+
+  it('returns an empty string for a row that has not been filled in', () => {
+    expect(formatInfrastructureIssue({ action: '   ', failure: '' })).toBe('');
+  });
+
+  it('adds a separate bulleted block below the justification when the list is separate', () => {
+    const output = formatTaskCompletion({
+      ...state,
+      separateInfrastructureList: true,
+      infrastructureIssues,
+    });
+
+    expect(
+      output.endsWith(
+        [
+          'Final Rating: Fully Complete',
+          'Justification: All tickets closed and verified.',
+          '',
+          'Infrastructure/tool call issues:',
+          '• Agent tries to open the CRM ticket but the tool returned a 403',
+          '• Agent tries to read the attached spreadsheet but the file did not load',
+        ].join('\n'),
+      ),
+    ).toBe(true);
+  });
+
+  it('folds the issues into the justification when the list is not separate', () => {
+    const output = formatTaskCompletion({ ...state, infrastructureIssues });
+
+    expect(
+      output.endsWith(
+        [
+          'Final Rating: Fully Complete',
+          'Justification: All tickets closed and verified.',
+          'Agent tries to open the CRM ticket but the tool returned a 403',
+          'Agent tries to read the attached spreadsheet but the file did not load',
+        ].join('\n'),
+      ),
+    ).toBe(true);
+    expect(output).not.toContain('Infrastructure/tool call issues:');
+  });
+
+  it('prints the issues on the justification line when no justification was typed', () => {
+    const output = formatTaskCompletion({
+      ...state,
+      justification: '',
+      infrastructureIssues: [infrastructureIssues[0]],
+    });
+
+    expect(output).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
+  });
+
+  it('leaves the output untouched when every issue row is empty', () => {
+    const output = formatTaskCompletion({
+      ...state,
+      separateInfrastructureList: true,
+      infrastructureIssues: [{ action: '', failure: ' ' }],
+    });
+
+    expect(output).toBe(formatTaskCompletion(state));
+    expect(output).not.toContain('Infrastructure/tool call issues:');
   });
 });

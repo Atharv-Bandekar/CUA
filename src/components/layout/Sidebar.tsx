@@ -14,8 +14,7 @@ export function Sidebar({ activeSection, onSelect }: SidebarProps) {
           <ClipboardList aria-hidden="true" size={16} />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-ink">BA Review</p>
-          <p className="truncate text-[11px] text-muted">Turing evaluation</p>
+          <p className="truncate text-sm font-semibold text-ink">CUA Evaluation</p>
         </div>
       </div>
 
