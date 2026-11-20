@@ -1,6 +1,7 @@
 import { Sparkles } from 'lucide-react';
 import { pluralize } from '../../domain/format';
 import {
+  infrastructureIssueLines,
   taskCompletionRatingLabel,
   type TaskCompletionCondition,
 } from '../../domain/taskCompletion';
@@ -14,6 +15,11 @@ import { TaskCompletionPreview } from './TaskCompletionPreview';
 export function TaskCompletionView() {
   const { taskCompletion } = useEvaluationStore();
   const conditions = taskCompletion.conditions;
+  // With a combined justification the issues print first, so they are shown
+  // above the text area to keep the on-screen order the same as the output.
+  const foldedIssues = taskCompletion.separateInfrastructureList
+    ? []
+    : infrastructureIssueLines(taskCompletion.infrastructureIssues);
 
   function addCondition(): void {
     evaluationStore.updateTaskCompletion({
@@ -166,11 +172,30 @@ export function TaskCompletionView() {
               Starter
             </button>
           </div>
+          {foldedIssues.length > 0 && (
+            <div
+              data-testid="justification-issue-prefix"
+              className="rounded-lg border border-line bg-canvas px-2.5 py-2 text-[11px] leading-relaxed text-muted"
+            >
+              <ul className="space-y-0.5">
+                {foldedIssues.map((line, index) => (
+                  <li key={`${index}-${line}`}>{line}</li>
+                ))}
+              </ul>
+              <p className="mt-1 text-[10px] text-muted/80">
+                These print before your justification text.
+              </p>
+            </div>
+          )}
           <textarea
             id="task-justification"
             className="field-input resize-y"
             rows={3}
-            placeholder="Why did the response earn this rating?"
+            placeholder={
+              foldedIssues.length > 0
+                ? 'Add your justification — it prints after the issues above.'
+                : 'Why did the response earn this rating?'
+            }
             value={taskCompletion.justification}
             onChange={(event) =>
               evaluationStore.updateTaskCompletion({ justification: event.target.value })

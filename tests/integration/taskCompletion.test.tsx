@@ -155,6 +155,43 @@ describe('Infrastructure issues', () => {
     expect(output()).toContain('Justification: Agent tries to open the CRM ticket but the tool returned a 403');
   });
 
+  it('shows the folded issues above the justification text and prints them first', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+
+    await user.click(screen.getByRole('button', { name: '+ Add Issue' }));
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 attempted action'),
+      'open the CRM ticket',
+    );
+    await user.type(
+      screen.getByLabelText('Infrastructure issue 1 failure'),
+      'the tool returned a 403',
+    );
+
+    expect(screen.getByTestId('justification-issue-prefix').textContent).toContain(
+      'Agent tries to open the CRM ticket but the tool returned a 403',
+    );
+
+    await user.type(screen.getByLabelText('Justification'), 'Tickets stayed open.');
+
+    const output = screen.getByTestId('task-completion-output').textContent ?? '';
+    const issueAt = output.indexOf('Agent tries to open the CRM ticket');
+    const textAt = output.indexOf('Tickets stayed open.');
+
+    expect(issueAt).toBeGreaterThan(-1);
+    expect(textAt).toBeGreaterThan(issueAt);
+
+    await user.click(
+      within(screen.getByRole('group', { name: 'Separate infrastructure list' })).getByRole(
+        'button',
+        { name: 'Yes' },
+      ),
+    );
+
+    expect(screen.queryByTestId('justification-issue-prefix')).toBeNull();
+  });
+
   it('persists the issues and the separate-list answer', async () => {
     const user = userEvent.setup();
     render(<App />);

@@ -75,10 +75,13 @@ export function InfrastructureIssuesSection({ issues, separateList }: Infrastruc
               );
             })}
           </div>
-          <button type="button" onClick={addIssue} className="add-button shrink-0 whitespace-nowrap">
-            + Add Issue
-          </button>
         </div>
+      </div>
+
+      <div className="flex items-center justify-end">
+        <button type="button" onClick={addIssue} className="add-button shrink-0 whitespace-nowrap">
+          + Add Issue
+        </button>
       </div>
 
       {issues.length === 0 ? (

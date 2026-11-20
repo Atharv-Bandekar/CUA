@@ -1,73 +1,45 @@
-# PR Summary — feat/cua-evaluation-branding
+# PR Summary — feat/infrastructure-issue-order
 
 ## What changed
-
-**Branding**
-- Renamed the sidebar brand from `BA Review` to `CUA Evaluation` and removed the
-  `Turing evaluation` subtitle line.
-- Applied the same name to the installable-app identity: the document title,
-  `apple-mobile-web-app-title` and the web app manifest `name` / `short_name` are now
-  `CUA Evaluation`.
-- Bumped the service-worker cache key (`ba-review-v2` → `cua-evaluation-v3`) so installed
-  copies pick up the new title, manifest and shell instead of the cached ones.
-
-**Infrastructure / tool call issues (Task Completion)**
-- New section directly below Conditions with the question *"Want a separate Infrastructure
-  list?"* (Yes / No), a `+ Add Issue` button on the right of that same row, and a
-  repeatable list of issues.
-- Each issue is two fields on one line — `Agent tries to [action + target] but [what
-  failed]` — plus the shared `RemovableFieldRow` close button. New issues are numbered from
-  their position, so deleting one renumbers the rest.
-- `formatInfrastructureIssue()` in `src/domain/taskCompletion.ts` renders the fixed
-  `Agent tries to … but …` template. Blank slots collapse instead of printing doubled
-  spaces, and a row with both fields empty is not printed at all.
-- Compilation now has two shapes, chosen by the Yes / No answer:
-  - **Yes** — the issues follow the justification as their own block:
-    ```
-    Justification: …
-
-    Infrastructure/tool call issues:
-    • Agent tries to open the CRM ticket but the tool returned a 403
-    ```
-  - **No** — the same lines are folded into the justification itself, with no heading:
-    ```
-    Justification: …
-    Agent tries to open the CRM ticket but the tool returned a 403
-    ```
-- State: `separateInfrastructureList: boolean` and `infrastructureIssues:
-  InfrastructureIssue[]` added to the Task Completion slice, persisted and validated on
-  load (`separateInfrastructureList` only survives as `true`; malformed rows are dropped).
+- **Issue lines print first when the list is not separate.** `formatTaskCompletion`
+  now emits the `Agent tries to … but …` lines above the typed justification text
+  instead of below it, so a combined justification follows the order the reviewer
+  recorded things in: issues first, justification text second.
+- **The Justification field shows those lines.** When the separate-list answer is
+  `No` and at least one issue is filled in, the Task Completion justification card
+  renders the printable issue lines directly above the text area, with a one-line
+  note that they print before the typed text. They disappear when the answer is
+  switched to `Yes`, because they then move to their own bulleted block.
+- **`infrastructureIssueLines` is exported** from the domain so the UI and the
+  output share one formatter instead of duplicating the template.
+- **Add Issue moved to its own right-aligned row** under the Yes / No question, so
+  it lines up with the remove buttons of the issue rows below it instead of being
+  crowded against the `No` button.
 
 ## Why
-
-- The worksheet is used for CUA evaluations, not business-analyst grading, and the subtitle
-  implied a single (former) client.
-- The manifest, tab title and sidebar disagreed after the rename; installed app windows and
-  the OS app list would still have shown the old name.
-- Reviewers have to record infrastructure and tool-call failures alongside task completion.
-  Free-text justification lost that structure; the two-field template keeps every entry in
-  the required `Agent tries to … but …` form.
+- The reported caveat: with the list set to `No`, issues added first still printed
+  after the justification text, so the on-screen and printed sequence disagreed
+  with the order the reviewer worked in.
+- The Add Issue button sat tightly against the `No` pill and looked detached from
+  the list it appends to.
 
 ## Tests
+- `npm test` — 108 passing (10 files)
+- `npm run build` — passing (265.57 kB JS / 79.93 kB gzip, 28.27 kB CSS)
 
-- `npm test` — **105 passing (10 files)**
-- `npm run build` — passing (`tsc --noEmit` + Vite build; 264.93 kB JS / 79.78 kB gzip,
-  27.82 kB CSS)
-- New coverage: the issue template and its blank-slot collapsing, both output shapes
-  (separate block vs. folded into the justification), skipping empty rows, adding /
-  editing / removing issue rows through the UI, switching Yes ↔ No, and persistence of both
-  the issues and the separate-list answer.
+New coverage:
+- `tests/domain/taskCompletion.test.ts` — folded issues print above the
+  justification text, keep that order when the justification is typed afterwards,
+  and `infrastructureIssueLines` drops empty rows.
+- `tests/integration/taskCompletion.test.tsx` — the justification card shows the
+  issue lines, the live output keeps them before the typed text, and they
+  disappear when the separate list is selected.
 
 ## Review notes / risks
-
-- Manifest `id`, `scope` and `start_url` are unchanged, so existing installations keep their
-  identity and stored worksheets.
-- An app installed before this deploy keeps the old window title until Chrome updates the
-  manifest (reopen the app or reinstall from Chrome's Apps page if it lingers).
-- The separate-list question defaults to **No**, matching the "add it straight into the
-  justification" behaviour. Choosing a side is persisted with the worksheet.
-- Issues are ordered as entered and print in that order; the heading text
-  (`Infrastructure/tool call issues:`) lives in the domain so the preview and the copy
-  button cannot drift.
-- Text/state additions only: the stored key `ba.evaluation.v1` is unchanged and older
-  payloads load with `separateInfrastructureList: false` and no issues.
+- Only the folded (`No`) shape changed order; the separate-list (`Yes`) output is
+  untouched — justification first, then the bulleted `Infrastructure/tool call
+  issues:` block.
+- Stored data is unchanged, so existing saved worksheets re-render with the new
+  order and need no migration.
+- The issue lines in the justification card are a read-only preview; editing still
+  happens in the issue rows, which remain the source of truth.

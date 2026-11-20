@@ -6,6 +6,7 @@ import {
   TASK_COMPLETION_STATUS_RATINGS,
   formatInfrastructureIssue,
   formatTaskCompletion,
+  infrastructureIssueLines,
   taskCompletionRatingLabel,
   taskCompletionStatusLabel,
 } from '../../src/domain/taskCompletion';
@@ -178,20 +179,45 @@ describe('infrastructure issues', () => {
     ).toBe(true);
   });
 
-  it('folds the issues into the justification when the list is not separate', () => {
+  it('folds the issues above the justification text when the list is not separate', () => {
     const output = formatTaskCompletion({ ...state, infrastructureIssues });
 
     expect(
       output.endsWith(
         [
           'Final Rating: Fully Complete',
-          'Justification: All tickets closed and verified.',
-          'Agent tries to open the CRM ticket but the tool returned a 403',
+          'Justification: Agent tries to open the CRM ticket but the tool returned a 403',
           'Agent tries to read the attached spreadsheet but the file did not load',
+          'All tickets closed and verified.',
         ].join('\n'),
       ),
     ).toBe(true);
     expect(output).not.toContain('Infrastructure/tool call issues:');
+  });
+
+  it('keeps the issues first when the justification is typed after them', () => {
+    const output = formatTaskCompletion({
+      ...state,
+      justification: '  I rated this Fully Complete because every ticket was closed.  ',
+      infrastructureIssues,
+    });
+
+    const issueAt = output.indexOf('Agent tries to open the CRM ticket');
+    const textAt = output.indexOf('I rated this Fully Complete');
+
+    expect(issueAt).toBeGreaterThan(-1);
+    expect(textAt).toBeGreaterThan(issueAt);
+    expect(output).toContain(
+      'Justification: Agent tries to open the CRM ticket but the tool returned a 403',
+    );
+  });
+
+  it('returns the printable issue lines for the justification preview', () => {
+    expect(infrastructureIssueLines(infrastructureIssues)).toEqual([
+      'Agent tries to open the CRM ticket but the tool returned a 403',
+      'Agent tries to read the attached spreadsheet but the file did not load',
+    ]);
+    expect(infrastructureIssueLines([{ action: '', failure: ' ' }])).toEqual([]);
   });
 
   it('prints the issues on the justification line when no justification was typed', () => {

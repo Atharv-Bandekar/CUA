@@ -93,7 +93,11 @@ export function formatInfrastructureIssue(issue: InfrastructureIssue): string {
   return ['Agent tries to', action, 'but', failure].filter((part) => part !== '').join(' ');
 }
 
-function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): string[] {
+/**
+ * Printable `Agent tries to … but …` lines, in row order. Empty rows are
+ * dropped so numbering never leaves a hole in the output.
+ */
+export function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): string[] {
   return issues.map(formatInfrastructureIssue).filter((line) => line !== '');
 }
 
@@ -101,14 +105,19 @@ function infrastructureIssueLines(issues: readonly InfrastructureIssue[]): strin
  * Compiles the task completion block. Conditions are numbered from their array
  * index (`index + 1`), so inserting or removing a row renumbers the rest. Goal
  * and condition statuses print as Yes / No, while the final rating prints its
- * scale label. Infrastructure issues either join the justification text or
+ * scale label. Infrastructure issues either open the justification text or
  * follow it as their own bulleted block, depending on the separate-list answer.
+ * A combined justification keeps the issues first, so the order matches the
+ * order the issues were recorded in before the justification was written.
  */
 export function formatTaskCompletion(state: TaskCompletionState): string {
   const issueLines = infrastructureIssueLines(state.infrastructureIssues);
   const separateIssues = state.separateInfrastructureList && issueLines.length > 0;
 
-  const justificationText = [state.justification.trim(), ...(separateIssues ? [] : issueLines)]
+  const justificationText = (separateIssues ? [state.justification.trim()] : [
+    ...issueLines,
+    state.justification.trim(),
+  ])
     .filter((part) => part !== '')
     .join('\n');
 
