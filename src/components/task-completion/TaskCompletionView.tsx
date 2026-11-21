@@ -65,10 +65,10 @@ export function TaskCompletionView() {
         </div>
 
         <div className="mt-1.5 flex items-stretch gap-2">
-          <input
+          <textarea
             id="task-main-goal"
-            type="text"
-            className="field-input min-w-0 flex-1"
+            rows={1}
+            className="field-input min-w-0 flex-1 resize-none"
             placeholder="What was the agent asked to do?"
             value={taskCompletion.mainGoal}
             onChange={(event) =>
@@ -118,9 +118,9 @@ export function TaskCompletionView() {
               >
                 <div className="min-w-0 space-y-2 rounded-lg border border-line bg-canvas p-2.5">
                   <span className="field-label">Condition {index + 1}</span>
-                  <input
-                    type="text"
-                    className="field-input"
+                  <textarea
+                    rows={1}
+                    className="field-input resize-none"
                     aria-label={`Condition ${index + 1} text`}
                     placeholder="What needed to be true?"
                     value={condition.text}
@@ -173,7 +173,7 @@ export function TaskCompletionView() {
           </div>
           <textarea
             id="task-justification"
-            className="field-input resize-y"
+            className="field-input resize-none"
             rows={3}
             placeholder="Why did the response earn this rating?"
             value={justificationValue}

@@ -124,18 +124,18 @@ export function InfrastructureIssuesSection({
               <div className="rounded-lg border border-line bg-canvas p-2.5">
                 <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
                   <span className="shrink-0 text-[11px] font-medium text-muted">Agent tries to</span>
-                  <input
-                    type="text"
-                    className="field-input min-w-0 flex-1"
+                  <textarea
+                    rows={1}
+                    className="field-input min-w-0 flex-1 resize-none"
                     aria-label={`Infrastructure issue ${index + 1} attempted action`}
                     placeholder="action + target / details"
                     value={issue.action}
                     onChange={(event) => updateIssue(index, { action: event.target.value })}
                   />
                   <span className="shrink-0 text-[11px] font-medium text-muted">but</span>
-                  <input
-                    type="text"
-                    className="field-input min-w-0 flex-1"
+                  <textarea
+                    rows={1}
+                    className="field-input min-w-0 flex-1 resize-none"
                     aria-label={`Infrastructure issue ${index + 1} failure`}
                     placeholder="what failed / what did not change"
                     value={issue.failure}

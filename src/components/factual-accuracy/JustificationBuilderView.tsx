@@ -143,7 +143,7 @@ export function JustificationBuilderView({
                   <span className="field-label">Claim {index + 1}</span>
 
                   <textarea
-                    className="field-input resize-y"
+                    className="field-input resize-none"
                     rows={2}
                     aria-label={`Claim ${index + 1} text`}
                     placeholder="What did the response claim?"
@@ -224,7 +224,7 @@ export function JustificationBuilderView({
                       </select>
                     </div>
                     <textarea
-                      className="field-input resize-y"
+                      className="field-input resize-none"
                       rows={2}
                       aria-label={`Claim ${index + 1} justification`}
                       placeholder="Why does this claim earn its accuracy?"
@@ -257,9 +257,9 @@ export function JustificationBuilderView({
                             index={sourceIndex + 1}
                             onRemove={() => removeSource(index, sourceIndex)}
                           >
-                            <input
-                              type="text"
-                              className="field-input break-all"
+                            <textarea
+                              rows={1}
+                              className="field-input resize-none break-all"
                               aria-label={`Claim ${index + 1} source ${sourceIndex + 1}`}
                               placeholder="Source name or URL"
                               value={source.text}
@@ -308,7 +308,7 @@ export function JustificationBuilderView({
           <textarea
             id={`${section}-final-justification`}
             aria-invalid={justificationMissing}
-            className={`field-input resize-y ${
+            className={`field-input resize-none ${
               justificationMissing ? 'border-warn/70 focus:border-warn focus:ring-warn/20' : ''
             }`}
             rows={3}

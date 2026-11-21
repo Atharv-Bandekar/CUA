@@ -55,9 +55,9 @@ function PointList({
               index={index + 1}
               onRemove={() => onChange(points.filter((_point, position) => position !== index))}
             >
-              <input
-                type="text"
-                className="field-input"
+              <textarea
+                rows={1}
+                className="field-input resize-none"
                 aria-label={`${ariaPrefix} ${index + 1}`}
                 placeholder={placeholder}
                 value={point.text}
@@ -108,7 +108,7 @@ export function ResponseExperienceView() {
             </label>
             <textarea
               id="response-experience-justification"
-              className="field-input resize-y"
+              className="field-input resize-none"
               rows={3}
               placeholder="Why can this response not be improved?"
               value={responseExperience.justification}
