@@ -9,6 +9,7 @@ import {
   claimJustificationForAccuracy,
   factualityRatingLabel,
   finalJustificationForRating,
+  formatClaimSummary,
   formatJustificationBuilder,
   formatObjectiveClaimsList,
 } from '../../src/domain/factualAccuracy';
@@ -76,7 +77,7 @@ describe('factuality rating options', () => {
 });
 
 describe('formatJustificationBuilder', () => {
-  it('numbers claims and sources by index and closes with the final rating', () => {
+  it('tallies the claims after they are listed and closes with the final rating', () => {
     expect(formatJustificationBuilder(state)).toBe(
       [
         'Claim 1: Q3 revenue grew 12%',
@@ -91,6 +92,13 @@ describe('formatJustificationBuilder', () => {
         'Subjective - Inaccurate',
         'Justification: Churn was flat quarter over quarter.',
         'Source 1: CRM export',
+        '',
+        'The response contains 2 claim(s):',
+        '- 1 Inaccurate',
+        '- 0 Unsupported',
+        '- 0 Disputed',
+        '- 1 Accurate',
+        "- 0 Can't confidently assess",
         '',
         'Final Rating: Mostly Accurate',
         'Final Justification: One claim was off.',
@@ -125,6 +133,43 @@ describe('formatJustificationBuilder', () => {
     });
 
     expect(output).toBe(['Final Rating: [Not Rated]', 'Final Justification: '].join('\n'));
+  });
+
+  it('tallies every accuracy in rising order, zeros included', () => {
+    const claims: Claim[] = [
+      'Inaccurate',
+      'Unsupported',
+      'Disputed',
+      "Can't confidently assess",
+      '',
+    ].map((accuracy) => ({
+      text: 'claim',
+      classification: 'Objective',
+      accuracy: accuracy as Claim['accuracy'],
+      justification: '',
+      sources: [],
+    }));
+
+    expect(formatClaimSummary(claims)).toBe(
+      [
+        'The response contains 5 claim(s):',
+        '- 1 Inaccurate',
+        '- 1 Unsupported',
+        '- 1 Disputed',
+        '- 0 Accurate',
+        "- 1 Can't confidently assess",
+      ].join('\n'),
+    );
+  });
+
+  it('leaves the tally out when the section has no claims', () => {
+    const output = formatJustificationBuilder({
+      claims: [],
+      finalRating: '5/5',
+      finalJustification: 'Nothing claimed.',
+    });
+
+    expect(output).not.toContain('claim(s)');
   });
 
   it('omits source lines for a claim without sources', () => {
@@ -229,14 +274,16 @@ describe('formatObjectiveClaimsList', () => {
 
   it('keeps only objective claims with non-blank text', () => {
     expect(formatObjectiveClaimsList(claims)).toBe(
-      ['• Revenue grew 12%', '• Revenue grew 12% on renewals'].join('\n'),
+      ['Claim 1: Revenue grew 12%', 'Claim 2: Revenue grew 12% on renewals'].join('\n\n'),
     );
   });
 
-  it('normalizes each bullet to a single line', () => {
-    const output = formatObjectiveClaimsList(claims);
-    expect(output.split('\n')).toHaveLength(2);
-    expect(output).not.toContain('\n\n');
+  it('numbers each claim and leaves one blank line between them', () => {
+    expect(formatObjectiveClaimsList(claims).split('\n')).toEqual([
+      'Claim 1: Revenue grew 12%',
+      '',
+      'Claim 2: Revenue grew 12% on renewals',
+    ]);
   });
 
   it('returns an empty string when no objective claims exist', () => {

@@ -142,9 +142,23 @@ function classificationLine(claim: Claim): string {
 }
 
 /**
- * Compiles one justification builder section. Claims and per-claim sources are
- * numbered from their array indexes; the section rating and justification close
- * the block.
+ * Claim tally printed after the claim blocks. Every accuracy is listed, in
+ * rising order, even when its count is zero.
+ */
+export function formatClaimSummary(claims: readonly Claim[]): string {
+  const counts = CLAIM_ACCURACIES.map((accuracy) => {
+    const count = claims.filter((claim) => claim.accuracy === accuracy).length;
+
+    return `- ${count} ${accuracy}`;
+  });
+
+  return [`The response contains ${claims.length} claim(s):`, ...counts].join('\n');
+}
+
+/**
+ * Compiles one justification builder section. Claims and their sources are
+ * numbered from their array indexes, the claim tally follows them, and the
+ * section rating and justification close the block.
  */
 export function formatJustificationBuilder(state: FactualAccuracyState): string {
   const claimBlocks = state.claims.map((claim, index) => {
@@ -170,13 +184,19 @@ export function formatJustificationBuilder(state: FactualAccuracyState): string 
     `Final Justification: ${state.finalJustification}`,
   ].join('\n');
 
-  return [...claimBlocks, finalBlock].join('\n\n');
+  const summaryBlocks =
+    state.claims.length > 0 ? [formatClaimSummary(state.claims)] : [];
+
+  return [...claimBlocks, ...summaryBlocks, finalBlock].join('\n\n');
 }
 
-/** Bulleted list of objective, non-blank claims, each squeezed to one line. */
+/**
+ * Objective, non-blank claims numbered from 1, one blank line apart, so each
+ * claim can be copied out on its own.
+ */
 export function formatObjectiveClaimsList(claims: readonly Claim[]): string {
   return claims
     .filter((claim) => claim.classification === 'Objective' && claim.text.trim() !== '')
-    .map((claim) => `• ${normalizeSingleLine(claim.text)}`)
-    .join('\n');
+    .map((claim, index) => `Claim ${index + 1}: ${normalizeSingleLine(claim.text)}`)
+    .join('\n\n');
 }

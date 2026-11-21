@@ -50,14 +50,16 @@ describe('factuality justification builder', () => {
     await user.type(screen.getByLabelText('Final Justification'), 'All claims verified.');
 
     const output = screen.getByTestId('factuality-output').textContent ?? '';
-    expect(output).toContain('Claim 1: Q3 revenue grew 12%');
+    expect(output.startsWith('Claim 1: Q3 revenue grew 12%')).toBe(true);
     expect(output).toContain('Objective - Accurate');
     expect(output).toContain('Source 1: 10-K filing');
-    expect(output).toContain('Final Rating: Completely Accurate');
+    expect(output).toContain(
+      '\n\nThe response contains 1 claim(s):\n- 0 Inaccurate\n- 0 Unsupported\n- 0 Disputed\n- 1 Accurate\n- 0 Can\'t confidently assess\n\nFinal Rating: Completely Accurate',
+    );
     expect(output).toContain('Final Justification: All claims verified.');
 
     expect(screen.getByTestId('objective-claims-output').textContent).toBe(
-      '• Q3 revenue grew 12%',
+      'Claim 1: Q3 revenue grew 12%',
     );
     expect(screen.getByRole('button', { name: 'Copy justification' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Copy objective claims' })).not.toBeNull();

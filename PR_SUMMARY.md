@@ -14,6 +14,16 @@
   same trimmed text.
 - **Add Issue stays on the Yes / No row, flush right**, with its right edge aligned
   to the issue rows and the empty state below it.
+- **Every text field is a non-resizable textarea.** Claim text and justification,
+  sources, Response Experience points, the main goal, condition, justification and
+  the infrastructure issue fields all use `textarea rows={1} resize-none`, so long
+  values wrap instead of scrolling sideways and no resize handle is drawn.
+- **The factuality output ends with the claim tally.** Claims and their sources come
+  first, then `The response contains N claim(s):` with every accuracy counted in
+  rising order (zeros included), then `Final Rating:` / `Final Justification:`.
+  Sections with no claims still print only the final pair.
+- **Objective claims are numbered `Claim n: text`**, one blank line apart, so each
+  one reads on its own.
 
 ## Why
 - Placing generated lines inside the reviewer's text needed offsets, an inverse
@@ -24,8 +34,8 @@
   with a single pure function, and the reviewer fills the blanks in place.
 
 ## Tests
-- `npm test` — 108 passing (10 files)
-- `npm run build` — passing (265.44 kB JS / 79.90 kB gzip, 28.05 kB CSS)
+- `npm test` — 110 passing (10 files)
+- `npm run build` — passing (265.72 kB JS / 79.96 kB gzip, 28.07 kB CSS)
 
 New coverage:
 - `tests/domain/taskCompletion.test.ts` — `appendInfrastructureTemplate` appends
@@ -37,6 +47,12 @@ New coverage:
   action / failure rows and the bulleted output; switching back to `No` hides the
   rows and leaves the justification alone; persistence stores the rows without
   offsets.
+- `tests/domain/factualAccuracy.test.ts` — exact output with the tally after the
+  claim blocks, tally order with zeros, no tally without claims, and numbered
+  objective claims.
+- `tests/integration/factuality.test.tsx` — the compiled output starts with
+  `Claim 1:`, the tally follows the last source, and the objective list is
+  `Claim 1: <text>`.
 
 ## Review notes / risks
 - Issue rows entered under `Yes` are kept in state when the answer changes to `No`,
